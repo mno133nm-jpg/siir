@@ -2,6 +2,7 @@ import { Telegraf, Markup } from "telegraf";
 import dotenv from "dotenv";
 import { searchCompanies } from "./companies.js";
 import fs from "fs";
+import XLSX from "xlsx";
 import pdf from "pdf-parse";
 import OpenAI from "openai";
 import { Resend } from "resend";
@@ -151,15 +152,15 @@ async function ai(system, input) {
 // =====================
 // Menu
 // =====================
-
 function menu() {
   return {
     reply_markup: {
       inline_keyboard: [
-        [Markup.button.callback("📄 تحليل السيرة", "cv")],
-  [Markup.button.callback("🔍 الوظائف", "jobs")],
-  [Markup.button.callback("📧 البحث عن الإيميلات", "emails")],
-  [Markup.button.callback("👤 الملف الشخصي", "profile")]
+        [Markup.button.callback("📄 تحليل السيرة الذاتية", "cv")],
+        [Markup.button.callback("📝 إنشاء سيرة ذاتية", "create_cv")],
+        [Markup.button.callback("🎯 تحليل وصف وظيفي", "job")],
+        [Markup.button.callback("✉️ كتابة Cover Letter", "cover")],
+        [Markup.button.callback("👤 الملف الشخصي", "profile")]
       ]
     }
   };
@@ -453,7 +454,19 @@ bot.action("apply_companies", async (ctx) => {
 
   );
 });
+bot.action("create_cv", async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(
+    "📝 قريبًا ستتمكن من إنشاء سيرة ذاتية احترافية بالكامل بالذكاء الاصطناعي."
+  );
+});
 
+bot.action("cover", async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(
+    "✉️ أرسل الوصف الوظيفي وسأكتب لك Cover Letter احترافي يناسب الوظيفة."
+  );
+});
 bot.action("profile", async (ctx) => {
 
   await ctx.answerCbQuery();
