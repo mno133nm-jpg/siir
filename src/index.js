@@ -1,5 +1,8 @@
 import { Telegraf, Markup } from "telegraf";
 import dotenv from "dotenv";
+import { menu } from "./bot/menu.js";
+import { registerCV } from "./bot/cv.js";
+import { db, save } from "./services/database.js";
 import { searchCompanies } from "./companies.js";
 import fs from "fs";
 import XLSX from "xlsx";
@@ -36,42 +39,6 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const DB_FILE = "./database.json";
 
-function db() {
-
-  if (!fs.existsSync(DB_FILE)) {
-
-    fs.writeFileSync(
-      DB_FILE,
-      JSON.stringify({
-        users: {},
-        applications: []
-      }, null, 2)
-    );
-
-  }
-
-  return JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-
-}
-
-function save(data) {
-
-  fs.writeFileSync(
-    DB_FILE,
-    JSON.stringify(data, null, 2)
-  );
-
-}
-
-// =====================
-// Sessions
-// =====================
-
-const sessions = new Map();
-
-// =====================
-// User
-// =====================
 
 function user(ctx) {
 
@@ -152,19 +119,6 @@ async function ai(system, input) {
 // =====================
 // Menu
 // =====================
-function menu() {
-  return {
-    reply_markup: {
-      inline_keyboard: [
-        [Markup.button.callback("📄 تحليل السيرة الذاتية", "cv")],
-        [Markup.button.callback("📝 إنشاء سيرة ذاتية", "create_cv")],
-        [Markup.button.callback("🎯 تحليل وصف وظيفي", "job")],
-        [Markup.button.callback("✉️ كتابة Cover Letter", "cover")],
-        [Markup.button.callback("👤 الملف الشخصي", "profile")]
-      ]
-    }
-  };
-}
 // =====================
 // Start
 // =====================
@@ -173,45 +127,31 @@ bot.start(async (ctx) => {
 
   user(ctx);
 
-  await ctx.reply(
+await ctx.reply(
+  `👋 أهلاً ${ctx.from.first_name}
 
-    `👋 أهلاً ${ctx.from.first_name}
+🤖 أنا Sir AI
 
-أنا Sir AI
+مساعدك الذكي لتطوير مسيرتك المهنية.
 
-أستطيع:
+أستطيع مساعدتك في:
 
-• تحليل السيرة الذاتية
-• البحث عن وظائف مناسبة
-• تحليل الوظيفة
-• تجهيز Cover Letter
-• إرسال الإيميل للشركة`,
+📄 تحليل السيرة الذاتية
+📝 إنشاء سيرة ذاتية احترافية
+🎯 تحليل الوصف الوظيفي
+✉️ إنشاء Cover Letter احترافي
+👤 إدارة ملفك الشخصي
 
-    menu()
+اختر الخدمة التي تريدها من القائمة أدناه 👇`,
 
-  );
-
+  menu()
+);
 });
 
 // =====================
 // Menu Buttons
 // =====================
 
-bot.action("cv", async (ctx) => {
-
-  await ctx.answerCbQuery();
-
-  sessions.set(ctx.from.id, {
-
-    step: "cv"
-
-  });
-
-  await ctx.reply(
-    "📄 أرسل السيرة الذاتية بصيغة PDF."
-  );
-
-});
 bot.action("emails", async (ctx) => {
 
   await ctx.answerCbQuery();
