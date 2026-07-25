@@ -1,6 +1,8 @@
 import { Telegraf, Markup } from "telegraf";
 import dotenv from "dotenv";
 import { menu } from "./bot/menu.js";
+import { ai } from "./services/ai.js";
+import { registerCV } from "./bot/cv.js";
 import { registerCV } from "./bot/cv.js";
 import { db, save } from "./services/database.js";
 import { searchCompanies } from "./companies.js";
@@ -82,46 +84,6 @@ const rules = `
 لا تضف أي شرح خارج JSON.
 `;
 
-async function ai(system, input) {
-
-  const res = await openai.chat.completions.create({
-
-    model: "gpt-4o-mini",
-
-    temperature: 0.2,
-
-    response_format: {
-      type: "json_object"
-    },
-
-    messages: [
-
-      {
-        role: "system",
-        content: system
-      },
-
-      {
-        role: "user",
-        content: input
-      }
-
-    ]
-
-  });
-
-  return JSON.parse(
-    res.choices[0].message.content
-  );
-
-}
-
-// =====================
-// Menu
-// =====================
-// =====================
-// Start
-// =====================
 
 bot.start(async (ctx) => {
 
