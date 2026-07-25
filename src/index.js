@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import { menu } from "./bot/menu.js";
 import { ai } from "./services/ai.js";
 import { registerCV } from "./bot/cv.js";
-import { registerCV } from "./bot/cv.js";
 import { db, save } from "./services/database.js";
 import { searchCompanies } from "./companies.js";
 import fs from "fs";
@@ -744,7 +743,7 @@ bot.catch((err) => {
 // =====================
 // Launch
 // =====================
-
+registerCV(bot, sessions);
 bot.launch();
 
 
