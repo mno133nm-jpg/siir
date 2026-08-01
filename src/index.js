@@ -1,10 +1,14 @@
+import "dotenv/config";
 import { Telegraf, Markup } from "telegraf";
-import dotenv from "dotenv";
+import { registerCompanyEmails } from "./bot/companyEmails.js";
 import { menu } from "./bot/menu.js";
 import { ai } from "./services/ai.js";
 import { registerCV } from "./bot/cv.js";
+import { getOrCreateJobTemplate } from "./services/jobTemplateService.js";
+import { getJobTemplate } from "./services/jobMatcher.js";
 import { db, save } from "./services/database.js";
 import { searchCompanies } from "./companies.js";
+import { analyzeResumeAgainstJob } from "./services/atsOptimizer.js";
 import fs from "fs";
 import XLSX from "xlsx";
 import pdf from "pdf-parse";
@@ -12,13 +16,16 @@ import OpenAI from "openai";
 import { Resend } from "resend";
 import { searchJobs } from "./job-search.js";
 
-dotenv.config();
 
 // =====================
 // Telegram
 // =====================
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
+const sessions = new Map();
+
+registerCompanyEmails(bot);
+registerCV(bot, sessions);
 
 // =====================
 // OpenAI
@@ -113,129 +120,37 @@ await ctx.reply(
 // Menu Buttons
 // =====================
 
-bot.action("emails", async (ctx) => {
-
+bot.action("company_emails", async (ctx) => {
   await ctx.answerCbQuery();
 
-  await ctx.reply(
-    "📍 اختر المنطقة",
-    {
-      reply_markup: {
-        inline_keyboard: [
-
-          [
-            { text: "الرياض", callback_data: "city_الرياض" },
-            { text: "الشرقية", callback_data: "city_الشرقية" }
-          ],
-
-          [
-            { text: "القصيم", callback_data: "city_القصيم" },
-            { text: "الغربية", callback_data: "city_الغربية" }
-          ],
-
-          [
-            { text: "الجنوب", callback_data: "city_الجنوب" },
-             { text: "الكل", callback_data: "city_الكل" }
-          ],
-
-        ]
-      }
-    }
-  );
-
-});
-bot.action(/^emails20_(.+)$/, async (ctx)=>{
-
-    const city = ctx.match[1];
-
-    const result = searchCompanies(city,20);
-
-    let text="";
-
-    result.forEach((c,i)=>{
-
-        text += `${i+1}. ${c.Email}\n`;
-
-    });
-
-    await ctx.reply(text);
-
-});
-bot.action(/^emails50_(.+)$/, async (ctx)=>{
-
-    const city = ctx.match[1];
-
-    const result = searchCompanies(city,50);
-
-    let text="";
-
-    result.forEach((c,i)=>{
-
-        text += `${i+1}. ${c.Email}\n`;
-
-    });
-
-    await ctx.reply(text);
-
-});
-bot.action(/^emails100_(.+)$/, async (ctx)=>{
-
-    const city = ctx.match[1];
-
-    const result = searchCompanies(city,100);
-
-    let text="";
-
-    result.forEach((c,i)=>{
-
-        text += `${i+1}. ${c.Email}\n`;
-
-    });
-
-    await ctx.reply(text);
-
-});
-bot.action(/^city_(.+)$/, async (ctx) => {
-
-  await ctx.answerCbQuery();
-
-  const city = ctx.match[1];
-
-const result = searchCompanies(city, 999999);
-
-await ctx.reply(
-`📍 ${city}
-
-وجدت ${result.length} إيميل.
-
-اختر العدد:`,
-{
-  reply_markup:{
-    inline_keyboard:[
+  return ctx.reply(
+    "📧 اختر المنطقة:",
+    Markup.inlineKeyboard([
       [
-        {text:"20",callback_data:`emails20_${city}`},
-        {text:"50",callback_data:`emails50_${city}`}
+        Markup.button.callback("📍 الرياض", "emails_riyadh"),
+        Markup.button.callback("🌊 الشرقية", "emails_eastern")
       ],
       [
-        {text:"100",callback_data:`emails100_${city}`}
+        Markup.button.callback("🌴 الغربية", "emails_western"),
+        Markup.button.callback("⛰️ الجنوب", "emails_south")
       ],
       [
-        {text:"📥 تحميل Excel",callback_data:`excel_${city}`}
+        Markup.button.callback("🌾 القصيم", "emails_qassim"),
+        Markup.button.callback("🏔️ الشمال", "emails_north")
+      ],
+      [
+        Markup.button.callback("📩 كل الإيميلات", "emails_all")
+      ],
+      [
+        Markup.button.callback("🔙 رجوع", "back_to_menu")
       ]
-    ]
-  }
-
+    ])
+  );
 });
 
-});
-bot.action(/^excel_(.+)$/, async (ctx) => {
-
+bot.action("back_to_menu", async (ctx) => {
   await ctx.answerCbQuery();
-
-  const city = ctx.match[1];
-
-  // سيتم كتابة كود إنشاء ملف Excel هنا
-
+  return ctx.reply("🏠 القائمة الرئيسية", menu());
 });
 bot.action("job", async (ctx) => {
 
@@ -357,13 +272,109 @@ bot.action("apply_companies", async (ctx) => {
 });
 bot.action("create_cv", async (ctx) => {
   await ctx.answerCbQuery();
+
+  sessions.set(ctx.from.id, {
+    step: "create_cv_type",
+    cvData: {}
+  });
+
   await ctx.reply(
-    "📝 قريبًا ستتمكن من إنشاء سيرة ذاتية احترافية بالكامل بالذكاء الاصطناعي."
+    `📝 إنشاء سيرة ذاتية
+
+اختر حالتك المهنية حتى نكتب السيرة بأسلوب يناسبك:`,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          "🎓 حديث تخرج",
+          "cv_type_fresh"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "💼 لدي خبرة عملية",
+          "cv_type_experienced"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "👔 مدير أو قائد فريق",
+          "cv_type_manager"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "❌ إلغاء",
+          "create_cv_cancel"
+        )
+      ]
+    ])
+  );
+});
+bot.action("cv_type_fresh", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const session = sessions.get(ctx.from.id);
+
+  if (!session) {
+    await ctx.reply("❌ انتهت الجلسة، ابدئي من جديد.");
+    return;
+  }
+
+  session.cvData.userType = "fresh";
+  session.step = "create_cv_name";
+  sessions.set(ctx.from.id, session);
+
+  await ctx.reply(
+    `🎓 سيتم إعداد السيرة بأسلوب مناسب لحديثي التخرج، مع التركيز على التعليم والمهارات والتدريب والمشاريع.
+
+👤 ما اسمك الكامل؟`
   );
 });
 
+bot.action("cv_type_experienced", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const session = sessions.get(ctx.from.id);
+
+  if (!session) {
+    await ctx.reply("❌ انتهت الجلسة، ابدئي من جديد.");
+    return;
+  }
+
+  session.cvData.userType = "experienced";
+  session.step = "create_cv_name";
+  sessions.set(ctx.from.id, session);
+
+  await ctx.reply(
+    `💼 سيتم إعداد السيرة بأسلوب يركز على الخبرات والمهام والإنجازات المهنية.
+
+👤 ما اسمك الكامل؟`
+  );
+});
+
+bot.action("cv_type_manager", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const session = sessions.get(ctx.from.id);
+
+  if (!session) {
+    await ctx.reply("❌ انتهت الجلسة، ابدئي من جديد.");
+    return;
+  }
+
+  session.cvData.userType = "manager";
+  session.step = "create_cv_name";
+  sessions.set(ctx.from.id, session);
+
+  await ctx.reply(
+    `👔 سيتم إعداد السيرة بأسلوب قيادي يركز على إدارة الفرق وتحسين الأداء وتحقيق النتائج.
+
+👤 ما اسمك الكامل؟`
+  );
+});
 bot.action("cover", async (ctx) => {
   await ctx.answerCbQuery();
+
   await ctx.reply(
     "✉️ أرسل الوصف الوظيفي وسأكتب لك Cover Letter احترافي يناسب الوظيفة."
   );
@@ -516,7 +527,6 @@ ${profile.summary || ""}`,
 // =====================
 
 bot.on("text", async (ctx) => {
-
   // تجاهل الأوامر
   if (ctx.message.text.startsWith("/")) return;
 
@@ -525,6 +535,253 @@ bot.on("text", async (ctx) => {
   if (!s) return;
 
   const u = user(ctx);
+
+if (s.step === "ats_waiting_job_description") {
+  const jobDescription = ctx.message.text.trim();
+
+  if (jobDescription.length < 2) {
+    return ctx.reply(
+      "❌ أرسل إعلان الوظيفة أو اكتب المسمى الوظيفي."
+    );
+  }
+
+  s.cvData = s.cvData || {};
+  s.cvData.jobDescription = jobDescription;
+  s.step = "create_cv_type";
+
+  sessions.set(ctx.from.id, s);
+
+  return ctx.reply(
+    `👤 اختر حالتك المهنية حتى نكتب السيرة بما يناسب إعلان الوظيفة:`,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          "🎓 حديث تخرج",
+          "cv_type_fresh"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "💼 لدي خبرة عملية",
+          "cv_type_experienced"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "👔 مدير أو قائد فريق",
+          "cv_type_manager"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "❌ إلغاء",
+          "create_cv_cancel"
+        )
+      ]
+    ])
+  );
+}   
+
+
+
+  // =====================
+  // إنشاء سيرة ذاتية
+  // =====================
+
+  if (s.step === "create_cv_name") {
+    s.cvData.name = ctx.message.text.trim();
+    s.step = "create_cv_phone";
+
+    sessions.set(ctx.from.id, s);
+
+    return ctx.reply(
+      "📱 اكتب رقم الجوال مع مفتاح الدولة، مثال:\n+966500000000"
+    );
+  }
+
+  if (s.step === "create_cv_phone") {
+    s.cvData.phone = ctx.message.text.trim();
+    s.step = "create_cv_email";
+
+    sessions.set(ctx.from.id, s);
+
+    return ctx.reply("📧 ما بريدك الإلكتروني؟");
+  }
+
+  if (s.step === "create_cv_email") {
+    const email = ctx.message.text.trim();
+
+    if (!email.includes("@")) {
+      return ctx.reply(
+        "❌ البريد الإلكتروني غير صحيح، اكتبه مرة أخرى."
+      );
+    }
+
+    s.cvData.email = email;
+    s.step = "create_cv_city";
+
+    sessions.set(ctx.from.id, s);
+
+    return ctx.reply("📍 في أي مدينة تسكن؟");
+  }
+
+  if (s.step === "create_cv_city") {
+    s.cvData.city = ctx.message.text.trim();
+    s.step = "create_cv_job_title";
+
+    sessions.set(ctx.from.id, s);
+
+    return ctx.reply(
+      "🎯 ما المسمى الوظيفي الذي تستهدفه؟\nمثال: أخصائي موارد بشرية"
+    );
+  }
+
+  if (s.step === "create_cv_job_title") {
+   s.cvData.jobTitle = ctx.message.text.trim();
+    s.step = "create_cv_education";
+
+    sessions.set(ctx.from.id, s);
+
+    return ctx.reply(
+      `🎓 اكتب مؤهلك الدراسي.
+
+مثال:
+بكالوريوس إدارة أعمال
+جامعة القصيم
+2024`
+    );
+  }
+
+  if (s.step === "create_cv_education") {
+    s.cvData.education = ctx.message.text.trim();
+    s.step = "create_cv_experience";
+
+    sessions.set(ctx.from.id, s);
+
+    return ctx.reply(
+      `💼 اكتب خبراتك العملية.
+
+مثال:
+أخصائي موارد بشرية في شركة س
+من 2022 إلى 2024
+المهام: التوظيف وإدارة ملفات الموظفين
+
+إذا لم توجد خبرة اكتب: حديث تخرج`
+    );
+  }
+
+  if (s.step === "create_cv_experience") {
+    s.cvData.experience = ctx.message.text.trim();
+    s.step = "create_cv_skills";
+
+    sessions.set(ctx.from.id, s);
+
+    return ctx.reply(
+      `🛠 اكتب مهاراتك مفصولة بفاصلة.
+
+مثال:
+التواصل، Microsoft Excel، التوظيف، العمل الجماعي`
+    );
+  }
+
+  if (s.step === "create_cv_skills") {
+    s.cvData.skills = ctx.message.text
+      .split(/[,،\n]/)
+      .map((skill) => skill.trim())
+      .filter(Boolean);
+
+    s.step = "create_cv_languages";
+
+    sessions.set(ctx.from.id, s);
+
+    return ctx.reply(
+      `🌐 اكتب اللغات ومستواك فيها.
+
+مثال:
+العربية: اللغة الأم
+الإنجليزية: جيد جدًا`
+    );
+  }
+
+  if (s.step === "create_cv_languages") {
+    s.cvData.languages = ctx.message.text.trim();
+    s.step = "create_cv_courses";
+
+    sessions.set(ctx.from.id, s);
+
+    return ctx.reply(
+      `📚 اكتب الدورات والشهادات.
+
+إذا لم توجد، اكتب: لا يوجد`
+    );
+  }
+
+  if (s.step === "create_cv_courses") {
+    s.cvData.courses = ctx.message.text.trim();
+
+    const cvData = s.cvData;
+
+    sessions.set(ctx.from.id, {
+      step: "create_cv_confirm",
+      cvData
+    });
+
+    return ctx.reply(
+      `✅ راجع بياناتك:
+
+👤 الاسم:
+${cvData.name}
+
+📱 الجوال:
+${cvData.phone}
+
+📧 البريد:
+${cvData.email}
+
+📍 المدينة:
+${cvData.city}
+
+🎯 المسمى المستهدف:
+${cvData.targetJobTitle}
+
+🎓 التعليم:
+${cvData.education}
+
+💼 الخبرة:
+${cvData.experience}
+
+🛠 المهارات:
+${cvData.skills.join("، ")}
+
+🌐 اللغات:
+${cvData.languages}
+
+📚 الدورات:
+${cvData.courses}
+
+هل البيانات صحيحة؟`,
+      Markup.inlineKeyboard([
+        [
+          Markup.button.callback(
+            "✅ إنشاء السيرة",
+            "create_cv_generate"
+          )
+        ],
+        [
+          Markup.button.callback(
+            "🔄 البدء من جديد",
+            "create_cv"
+          )
+        ],
+        [
+          Markup.button.callback(
+            "❌ إلغاء",
+            "create_cv_cancel"
+          )
+        ]
+      ])
+    );
+  }
 
   if (s.step === "emails_city") {
 
@@ -709,6 +966,277 @@ ${ctx.message.text}
 // =====================
 // Send Job Button
 // =====================
+bot.action("create_cv_cancel", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  sessions.delete(ctx.from.id);
+
+  return ctx.reply(
+    "❌ تم إلغاء إنشاء السيرة الذاتية.",
+    menu()
+  );
+});
+bot.action("create_cv_generate", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const userId = ctx.from.id;
+  const session = sessions.get(userId);
+
+  if (!session?.cvData) {
+    await ctx.reply(
+      "❌ لم أجد بيانات السيرة الذاتية.\n\nابدئي من جديد من خلال زر إنشاء سيرة ذاتية."
+    );
+    return;
+  }
+const data = session.cvData;
+const jobDescription =
+  data.jobDescription || "";
+
+const jobTitle =
+  data.jobTitle ||
+  data.targetJobTitle ||
+  data.jobDescription ||
+  "";
+
+const loadingMessage = await ctx.reply(
+  "⏳ جاري إنشاء سيرتك الذاتية بالذكاء الاصطناعي..."
+);
+
+try {
+console.log("🔎 المسمى المطلوب:", jobTitle);
+  console.log("📌 قبل استدعاء القالب:", data.jobTitle);
+
+  console.log("📌 سيتم استدعاء getOrCreateJobTemplate");
+
+const jobTemplateResult =
+  await getOrCreateJobTemplate(jobTitle);
+
+  console.log("📌 انتهى استدعاء getOrCreateJobTemplate");
+
+  console.log(
+    "📚 مصدر القالب:",
+    jobTemplateResult?.source
+  );
+
+  const jobTemplate =
+    jobTemplateResult?.template || null;
+
+  const jobKnowledge = jobTemplate
+    ? `
+بيانات مهنية معتمدة للمسمى الوظيفي:
+
+المسمى:
+${jobTemplate.title}
+
+المهارات المقترحة:
+- ${jobTemplate.skills.join("\n- ")}
+
+المسؤوليات الشائعة:
+- ${jobTemplate.responsibilities.join("\n- ")}
+
+الإنجازات المهنية الشائعة:
+- ${jobTemplate.achievements.join("\n- ")}
+
+الكلمات المفتاحية لأنظمة ATS:
+${jobTemplate.keywords.join(", ")}
+`
+    : `
+لا يوجد قالب داخلي مطابق لهذا المسمى.
+استنتج مهارات ومسؤوليات وإنجازات واقعية ومناسبة للمسمى، دون اختراع شركات أو تواريخ أو أرقام.
+`;
+
+  const response = await openai.responses.create({
+    model: "gpt-5-mini",
+
+instructions: `
+أنت خبير في أنظمة تتبع المتقدمين ATS وتحليل السير الذاتية.
+
+قارن السيرة الذاتية مع إعلان الوظيفة بدقة.
+
+أعد النتيجة بصيغة JSON فقط، بدون Markdown أو شرح خارج JSON.
+
+الصيغة المطلوبة:
+
+{
+  "score": 0,
+  "summary": "",
+  "matchedKeywords": [],
+  "missingKeywords": [],
+  "matchedSkills": [],
+  "missingSkills": [],
+  "experienceGaps": [],
+  "recommendations": [],
+  "optimizedSummary": "",
+  "optimizedSkills": []
+}
+
+القواعد:
+- score رقم صحيح من 0 إلى 100.
+- لا تخترع مهارات أو خبرات يملكها المستخدم.
+- فرّق بين الكلمات الموجودة فعلًا والكلمات الناقصة.
+- اجعل التوصيات عملية وواضحة.
+- optimizedSummary يجب أن يكون ملخصًا مهنيًا محسنًا ومتوافقًا مع إعلان الوظيفة، دون اختراع معلومات.
+- optimizedSkills تحتوي فقط على مهارات مذكورة في السيرة أو يمكن صياغتها منطقيًا من خبرات المستخدم الحقيقية.
+- لا تضف شركات أو تواريخ أو مؤهلات أو أرقامًا غير مذكورة.
+
+إذا كان إعلان الوظيفة يحتوي على مسمى وظيفي فقط:
+- استنتج الكلمات المفتاحية والمهارات والمسؤوليات الشائعة لهذا المسمى.
+- وضّح أن التحليل تقديري لأنه لا يوجد وصف وظيفي كامل.
+- لا تخترع متطلبات محددة لشركة بعينها.
+`,
+
+    input: `
+أنشئ سيرة ذاتية احترافية من البيانات التالية:
+
+إعلان الوظيفة أو المسمى الوظيفي:
+
+${jobDescription}
+
+اجعل السيرة الذاتية متوافقة مع هذا الإعلان.
+استخرج الكلمات المفتاحية المناسبة من الإعلان، لكن لا تضف أي خبرة أو مهارة غير موجودة في بيانات المستخدم.
+إذا كان المدخل مسمى وظيفيًا فقط، استخدم المتطلبات الشائعة لهذا المسمى دون اختراع معلومات.
+
+${jobKnowledge}
+
+استخدم البيانات المهنية السابقة كأساس لصياغة السيرة.
+لا تنسخها حرفيًا كلها، بل اختر الأنسب منها حسب بيانات المستخدم ونوعه المهني.
+
+نوع المستخدم المهني: ${
+      data.userType === "fresh"
+        ? "حديث تخرج"
+        : data.userType === "manager"
+        ? "مدير أو قائد فريق"
+        : "لديه خبرة عملية"
+    }
+
+الاسم الكامل: ${data.name || "غير متوفر"}
+رقم الجوال: ${data.phone || "غير متوفر"}
+البريد الإلكتروني: ${data.email || "غير متوفر"}
+المدينة: ${data.city || "غير متوفر"}
+المسمى الوظيفي المستهدف: ${jobTitle || "غير متوفر"}
+التعليم: ${data.education || "غير متوفر"}
+الخبرات العملية: ${data.experience || "غير متوفر"}
+المهارات: ${data.skills || "غير متوفر"}
+اللغات: ${data.languages || "غير متوفر"}
+الدورات والشهادات: ${data.courses || "غير متوفر"}
+`
+  });
+
+  const cvText = response.output_text?.trim();
+
+  if (!cvText) {
+    throw new Error("لم يرجع الذكاء الاصطناعي نص السيرة.");
+  }
+
+  session.generatedCV = cvText;
+  session.step = "cv_generated";
+  sessions.set(userId, session);
+
+  try {
+    await ctx.telegram.deleteMessage(
+      ctx.chat.id,
+      loadingMessage.message_id
+    );
+  } catch (deleteError) {
+    console.log(
+      "تعذر حذف رسالة الانتظار:",
+      deleteError.message
+    );
+  }
+
+  const telegramLimit = 3900;
+
+  if (cvText.length <= telegramLimit) {
+    await ctx.reply(cvText);
+  } else {
+    for (
+      let i = 0;
+      i < cvText.length;
+      i += telegramLimit
+    ) {
+      await ctx.reply(
+        cvText.slice(i, i + telegramLimit)
+      );
+    }
+  }
+
+  await ctx.reply(
+    "✅ تم إنشاء سيرتك الذاتية بنجاح.",
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          "📄 تحويل إلى PDF",
+          "create_cv_pdf"
+        )
+      ],
+      [
+  Markup.button.callback(
+    "🎯 تحسين السيرة لإعلان وظيفة",
+    "ats_optimize"
+  )
+],
+
+      [
+        Markup.button.callback(
+          "🔄 إنشاء نسخة جديدة",
+          "create_cv"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "🏠 القائمة الرئيسية",
+          "main_menu"
+        )
+      ]
+    ])
+  );
+} catch (error) {
+  console.error(
+    "❌ CV or template generation error:",
+    error
+  );
+
+  try {
+    await ctx.telegram.deleteMessage(
+      ctx.chat.id,
+      loadingMessage.message_id
+    );
+  } catch (deleteError) {
+    console.log(
+      "تعذر حذف رسالة الانتظار:",
+      deleteError.message
+    );
+  }
+
+  await ctx.reply(
+    "❌ حدث خطأ أثناء إنشاء السيرة الذاتية. حاولي مرة أخرى."
+  );
+}
+
+});
+
+bot.action("ats_optimize", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const userId = ctx.from.id;
+
+  sessions.set(userId, {
+    step: "ats_waiting_job_description",
+    cvData: {},
+    atsMode: true
+  });
+
+  return ctx.reply(
+    `🎯 أرسل إعلان الوظيفة كاملًا.
+
+إذا لم يوجد وصف، أرسل المسمى الوظيفي فقط.
+
+مثال:
+• محاسب
+• موظف خدمة عملاء
+• مدير مبيعات`
+  );
+});
 
 bot.action("send_job", async (ctx) => {
 
@@ -743,7 +1271,6 @@ bot.catch((err) => {
 // =====================
 // Launch
 // =====================
-registerCV(bot, sessions);
 bot.launch();
 
 

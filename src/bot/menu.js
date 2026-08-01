@@ -4,8 +4,15 @@ export function menu() {
   return Markup.inlineKeyboard([
     [Markup.button.callback("📄 تحليل السيرة الذاتية", "cv")],
     [Markup.button.callback("📝 إنشاء سيرة ذاتية", "create_cv")],
+    [
+  Markup.button.callback(
+    "🎯 تحسين السيرة لإعلان وظيفة",
+    "ats_optimize"
+  )
+],
     [Markup.button.callback("🎯 تحليل الوصف الوظيفي", "job")],
     [Markup.button.callback("✉️ إنشاء Cover Letter", "cover")],
+    [Markup.button.callback("📧 إيميلات الشركات", "company_emails")],
     [Markup.button.callback("👤 الملف الشخصي", "profile")]
   ]);
 }
