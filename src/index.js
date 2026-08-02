@@ -467,7 +467,6 @@ console.log(profile);
 
     save(data);
 
-    sessions.delete(ctx.from.id);
 
     await ctx.reply(
 
@@ -501,6 +500,94 @@ ${profile.summary || ""}`,
 // =====================
 // Job Analysis
 // =====================
+async function sendEmailSearchPage(ctx, sessions) {
+  const session = sessions.get(ctx.from.id);
+
+  if (!session?.emailSearchResults?.length) {
+    return ctx.reply("❌ لا توجد نتائج محفوظة.");
+  }
+
+  const pageSize = 50;
+  const offset = session.emailSearchOffset || 0;
+  const results = session.emailSearchResults;
+  const pageResults = results.slice(offset, offset + pageSize);
+
+  const shownUntil = Math.min(offset + pageSize, results.length);
+
+  await ctx.reply(
+    `🔍 نتائج البحث عن: ${session.emailSearchQuery}
+
+📊 إجمالي النتائج: ${results.length}
+📄 يتم عرض النتائج من ${offset + 1} إلى ${shownUntil}`
+  );
+
+  let message = "";
+
+  for (let i = 0; i < pageResults.length; i++) {
+    const company = pageResults[i];
+
+    const item = `${offset + i + 1}. 🏢 ${
+      company.company || "شركة غير محددة"
+    }
+💼 ${company.jobTitle || "مسمى غير محدد"}
+📧 ${company.email || "لا يوجد"}
+📍 ${company.city || "غير محدد"}`;
+
+    if (message.length + item.length > 3500) {
+      await ctx.reply(message);
+      message = "";
+    }
+
+    message +=
+      (message ? "\n\n━━━━━━━━━━━━━━\n\n" : "") +
+      item;
+  }
+
+  if (message) {
+    await ctx.reply(message);
+  }
+
+  const buttons = [];
+
+  if (shownUntil < results.length) {
+    buttons.push([
+      Markup.button.callback(
+        `📩 عرض ${Math.min(50, results.length - shownUntil)} نتيجة التالية`,
+        "emails_search_next"
+      )
+    ]);
+  }
+
+  if (offset > 0) {
+    buttons.push([
+      Markup.button.callback(
+        "⬅️ النتائج السابقة",
+        "emails_search_previous"
+      )
+    ]);
+  }
+
+  buttons.push([
+    Markup.button.callback(
+      "🔍 بحث جديد",
+      "emails_search_title"
+    )
+  ]);
+
+  buttons.push([
+    Markup.button.callback(
+      "🏠 القائمة الرئيسية",
+      "back_to_menu"
+    )
+  ]);
+
+  return ctx.reply(
+    shownUntil < results.length
+      ? `باقي ${results.length - shownUntil} نتيجة.`
+      : "✅ تم عرض جميع النتائج.",
+    Markup.inlineKeyboard(buttons)
+  );
+}
 
 bot.on("text", async (ctx) => {
   // تجاهل الأوامر
@@ -533,16 +620,15 @@ if (s.step === "emails_search_title") {
 
   sessions.delete(ctx.from.id);
 
-  const firstResults = results.slice(0, 50);
+sessions.set(ctx.from.id, {
+  step: "emails_search_results",
+  emailSearchResults: results,
+  emailSearchOffset: 0,
+  emailSearchQuery: query
+});
 
-  await ctx.reply(
-    `🔍 نتائج البحث عن: ${query}
+return sendEmailSearchPage(ctx, sessions);
 
-📊 عدد النتائج: ${results.length}
-📧 سيتم عرض أول ${firstResults.length} نتيجة.`
-  );
-
-  let message = "";
 
   for (let i = 0; i < firstResults.length; i++) {
     const company = firstResults[i];
@@ -569,7 +655,7 @@ if (s.step === "emails_search_title") {
   }
 
   return ctx.reply(
-    "✅ انتهى عرض نتائج البحث.",
+
     Markup.inlineKeyboard([
       [
         Markup.button.callback(
@@ -1002,7 +1088,6 @@ ${ctx.message.text}
 
       });
 
-      sessions.delete(ctx.from.id);
 
       return ctx.reply(
         "✅ تم إرسال الإيميل.",
