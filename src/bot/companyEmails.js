@@ -7,6 +7,11 @@ const EXCEL_PATH = path.resolve("companies.xlsx");
 const PAGE_SIZE = 50;
 
 const regions = {
+  bigCompanies: {
+  name: "الشركات الكبيرة",
+  emoji: "🏢",
+  keywords: ["شركة كبيرة"]
+},
   riyadh: {
     name: "الرياض",
     emoji: "📍",
