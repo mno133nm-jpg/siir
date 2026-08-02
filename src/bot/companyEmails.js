@@ -432,6 +432,42 @@ export function registerCompanyEmails(bot, sessions) {
       ])
     );
   });
+  bot.action("emails_search_next", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const session = sessions.get(ctx.from.id);
+
+  if (!session?.emailSearchResults) {
+    return ctx.reply("❌ انتهت جلسة البحث. ابدئي بحثًا جديدًا.");
+  }
+
+  session.emailSearchOffset =
+    (session.emailSearchOffset || 0) + 50;
+
+  sessions.set(ctx.from.id, session);
+
+  return sendEmailSearchPage(ctx, sessions);
+});
+
+bot.action("emails_search_previous", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const session = sessions.get(ctx.from.id);
+
+  if (!session?.emailSearchResults) {
+    return ctx.reply("❌ انتهت جلسة البحث. ابدئي بحثًا جديدًا.");
+  }
+
+  session.emailSearchOffset = Math.max(
+    0,
+    (session.emailSearchOffset || 0) - 50
+  );
+
+  sessions.set(ctx.from.id, session);
+
+  return sendEmailSearchPage(ctx, sessions);
+});
+
 bot.action("emails_search_title", async (ctx) => {
   await ctx.answerCbQuery();
 
