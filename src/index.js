@@ -1,6 +1,12 @@
 import "dotenv/config";
 import { Telegraf, Markup } from "telegraf";
 import { menu } from "./bot/menu.js";
+
+import {
+  registerCompanyEmails,
+  searchCompaniesByJobTitle
+} from "./bot/companyEmails.js";
+
 import { ai } from "./services/ai.js";
 import { registerCV } from "./bot/cv.js";
 import { getOrCreateJobTemplate } from "./services/jobTemplateService.js";
