@@ -125,52 +125,6 @@ await ctx.reply(
 // Menu Buttons
 // =====================
 
-bot.action("emails_search_next", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  const session = sessions.get(ctx.from.id);
-
-  if (!session?.emailSearchResults?.length) {
-    return ctx.reply(
-      "❌ انتهت جلسة البحث. ابدئي بحثًا جديدًا."
-    );
-  }
-
-  const currentOffset =
-    session.emailSearchOffset || 0;
-
-  const nextOffset = currentOffset + 50;
-
-  if (nextOffset >= session.emailSearchResults.length) {
-    return ctx.reply("✅ تم عرض جميع النتائج.");
-  }
-
-  session.emailSearchOffset = nextOffset;
-  sessions.set(ctx.from.id, session);
-
-  return sendEmailSearchPage(ctx, sessions);
-});
-bot.action("emails_search_previous", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  const session = sessions.get(ctx.from.id);
-
-  if (!session?.emailSearchResults?.length) {
-    return ctx.reply(
-      "❌ انتهت جلسة البحث. ابدئي بحثًا جديدًا."
-    );
-  }
-
-  session.emailSearchOffset = Math.max(
-    0,
-    (session.emailSearchOffset || 0) - 50
-  );
-
-  sessions.set(ctx.from.id, session);
-
-  return sendEmailSearchPage(ctx, sessions);
-});
-
 bot.action("back_to_menu", async (ctx) => {
   await ctx.answerCbQuery();
   return ctx.reply("🏠 القائمة الرئيسية", menu());
