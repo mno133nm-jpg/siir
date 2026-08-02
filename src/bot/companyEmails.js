@@ -372,6 +372,69 @@ export function searchCompaniesByJobTitle(query) {
       )
   );
 }
+async function sendEmailSearchPage(ctx, sessions) {
+  const session = sessions.get(ctx.from.id);
+
+  if (!session?.emailSearchResults?.length) {
+    return ctx.reply("❌ انتهت جلسة البحث.");
+  }
+
+  const offset = session.emailSearchOffset || 0;
+  const results = session.emailSearchResults;
+
+  const page = results.slice(offset, offset + PAGE_SIZE);
+
+  const messages = createTelegramMessages(
+    page,
+    offset + 1
+  );
+
+  await ctx.reply(
+    `🔍 نتائج البحث عن: ${session.emailSearchQuery}
+
+📄 النتائج ${offset + 1} - ${offset + page.length}
+📊 إجمالي النتائج: ${results.length}`
+  );
+
+  for (const message of messages) {
+    await ctx.reply(message);
+  }
+
+  const keyboard = [];
+
+  if (offset + PAGE_SIZE < results.length) {
+    keyboard.push([
+      Markup.button.callback(
+        `📩 عرض ${Math.min(
+          PAGE_SIZE,
+          results.length - (offset + PAGE_SIZE)
+        )} نتيجة التالية`,
+        "emails_search_next"
+      )
+    ]);
+  }
+
+  if (offset > 0) {
+    keyboard.push([
+      Markup.button.callback(
+        "⬅️ النتائج السابقة",
+        "emails_search_previous"
+      )
+    ]);
+  }
+
+  keyboard.push([
+    Markup.button.callback(
+      "🔍 بحث جديد",
+      "emails_search_title"
+    )
+  ]);
+
+  return ctx.reply(
+    "اختر:",
+    Markup.inlineKeyboard(keyboard)
+  );
+}
 
 export function registerCompanyEmails(bot, sessions) {
     bot.action("company_emails", async (ctx) => {
@@ -464,6 +527,32 @@ bot.action("emails_search_previous", async (ctx) => {
   );
 
   sessions.set(ctx.from.id, session);
+
+  return sendEmailSearchPage(ctx, sessions);
+});
+
+bot.on("text", async (ctx, next) => {
+  const session = sessions.get(ctx.from.id);
+
+  if (session?.step !== "emails_search_title") {
+    return next();
+  }
+
+  const query = ctx.message.text.trim();
+
+  const results =
+    searchCompaniesByJobTitle(query);
+
+  if (!results.length) {
+    return ctx.reply("❌ لا توجد نتائج.");
+  }
+
+  sessions.set(ctx.from.id, {
+    step: "emails_search_results",
+    emailSearchResults: results,
+    emailSearchOffset: 0,
+    emailSearchQuery: query
+  });
 
   return sendEmailSearchPage(ctx, sessions);
 });
