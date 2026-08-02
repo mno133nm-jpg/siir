@@ -319,14 +319,74 @@ function createRegionExcel(regionId) {
     region
   };
 }
+function normalizeSearchText(text = "") {
+  return String(text)
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ");
+}
 
-export function registerCompanyEmails(bot) {
-  bot.action("company_emails", async (ctx) => {
+export function searchCompaniesByJobTitle(query) {
+  const normalizedQuery = normalizeSearchText(query);
+
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  const queryWords = normalizedQuery
+    .split(" ")
+    .filter((word) => word.length > 1);
+
+  const results = readCompanies().filter((company) => {
+    const normalizedTitle = normalizeSearchText(
+      company.jobTitle
+    );
+
+    if (!normalizedTitle) {
+      return false;
+    }
+
+    // يطابق النص كاملًا أو جميع الكلمات التي كتبها المستخدم
+    return (
+      normalizedTitle.includes(normalizedQuery) ||
+      queryWords.every((word) =>
+        normalizedTitle.includes(word)
+      )
+    );
+  });
+
+  // حذف النتائج المكررة
+  return results.filter(
+    (company, index, self) =>
+      index ===
+      self.findIndex(
+        (item) =>
+          item.email.toLowerCase() ===
+            company.email.toLowerCase() &&
+          item.jobTitle === company.jobTitle
+      )
+  );
+}
+
+export function registerCompanyEmails(bot, sessions) {
+    bot.action("company_emails", async (ctx) => {
     await ctx.answerCbQuery();
 
     return ctx.reply(
       "📧 اختر المنطقة التي تريد إيميلات الشركات فيها:",
       Markup.inlineKeyboard([
+        [
+  Markup.button.callback(
+    "🔍 البحث بالمسمى الوظيفي",
+    "emails_search_title"
+  )
+],
+
         [
           Markup.button.callback(
             "📍 الرياض",
@@ -372,6 +432,26 @@ export function registerCompanyEmails(bot) {
       ])
     );
   });
+bot.action("emails_search_title", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  sessions.set(ctx.from.id, {
+    step: "emails_search_title"
+  });
+
+  return ctx.reply(
+    `🔍 اكتب المسمى الوظيفي أو جزءًا منه.
+
+أمثلة:
+• موارد بشرية
+• محاسب
+• مهندس
+• خدمة عملاء
+• قانون
+
+سيتم البحث داخل جميع المسميات الموجودة في ملف Excel.`
+  );
+});
 
   bot.action(/^emails_region:(.+)$/, async (ctx) => {
     await ctx.answerCbQuery();

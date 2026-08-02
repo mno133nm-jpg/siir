@@ -1,6 +1,9 @@
 import "dotenv/config";
 import { Telegraf, Markup } from "telegraf";
-import { registerCompanyEmails } from "./bot/companyEmails.js";
+import {
+  registerCompanyEmails,
+  searchCompaniesByJobTitle
+} from "./bot/companyEmails.js";
 import { menu } from "./bot/menu.js";
 import { ai } from "./services/ai.js";
 import { registerCV } from "./bot/cv.js";
@@ -24,7 +27,7 @@ import { searchJobs } from "./job-search.js";
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const sessions = new Map();
 
-registerCompanyEmails(bot);
+registerCompanyEmails(bot, sessions);
 registerCV(bot, sessions);
 
 // =====================
@@ -120,33 +123,6 @@ await ctx.reply(
 // Menu Buttons
 // =====================
 
-bot.action("company_emails", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  return ctx.reply(
-    "📧 اختر المنطقة:",
-    Markup.inlineKeyboard([
-      [
-        Markup.button.callback("📍 الرياض", "emails_riyadh"),
-        Markup.button.callback("🌊 الشرقية", "emails_eastern")
-      ],
-      [
-        Markup.button.callback("🌴 الغربية", "emails_western"),
-        Markup.button.callback("⛰️ الجنوب", "emails_south")
-      ],
-      [
-        Markup.button.callback("🌾 القصيم", "emails_qassim"),
-        Markup.button.callback("🏔️ الشمال", "emails_north")
-      ],
-      [
-        Markup.button.callback("📩 كل الإيميلات", "emails_all")
-      ],
-      [
-        Markup.button.callback("🔙 رجوع", "back_to_menu")
-      ]
-    ])
-  );
-});
 
 bot.action("back_to_menu", async (ctx) => {
   await ctx.answerCbQuery();
@@ -533,6 +509,89 @@ bot.on("text", async (ctx) => {
   const s = sessions.get(ctx.from.id);
 
   if (!s) return;
+if (s.step === "emails_search_title") {
+  const query = ctx.message.text.trim();
+
+  if (query.length < 2) {
+    return ctx.reply(
+      "❌ اكتب حرفين على الأقل من المسمى الوظيفي."
+    );
+  }
+
+  const results = searchCompaniesByJobTitle(query);
+
+  if (!results.length) {
+    return ctx.reply(
+      `❌ لم أجد مسميات تحتوي على: ${query}
+
+جرّب كتابة جزء أقصر من المسمى، مثل:
+موارد بشرية
+محاسب
+مهندس`
+    );
+  }
+
+  sessions.delete(ctx.from.id);
+
+  const firstResults = results.slice(0, 50);
+
+  await ctx.reply(
+    `🔍 نتائج البحث عن: ${query}
+
+📊 عدد النتائج: ${results.length}
+📧 سيتم عرض أول ${firstResults.length} نتيجة.`
+  );
+
+  let message = "";
+
+  for (let i = 0; i < firstResults.length; i++) {
+    const company = firstResults[i];
+
+    const item = `${i + 1}. 🏢 ${
+      company.company || "شركة غير محددة"
+    }
+💼 ${company.jobTitle || "مسمى غير محدد"}
+📧 ${company.email}
+📍 ${company.city || "غير محدد"}`;
+
+    if (message.length + item.length > 3500) {
+      await ctx.reply(message);
+      message = "";
+    }
+
+    message +=
+      (message ? "\n\n━━━━━━━━━━━━━━\n\n" : "") +
+      item;
+  }
+
+  if (message) {
+    await ctx.reply(message);
+  }
+
+  return ctx.reply(
+    "✅ انتهى عرض نتائج البحث.",
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          "🔍 بحث جديد",
+          "emails_search_title"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "📧 إيميلات الشركات",
+          "company_emails"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "🏠 القائمة الرئيسية",
+          "back_to_menu"
+        )
+      ]
+    ])
+  );
+}
 
   const u = user(ctx);
 
