@@ -104,7 +104,19 @@ function readCompanies() {
     }))
     .filter((row) => row.email);
 }
+function getAllCompanyNames() {
+  const companies = readCompanies();
 
+  return [
+    ...new Set(
+      companies
+        .map((item) => item.company.trim())
+        .filter(Boolean)
+    )
+  ].sort((a, b) =>
+    a.localeCompare(b, "ar")
+  );
+}
 function getCompaniesByRegion(regionId) {
   const companies = readCompanies();
 
@@ -178,6 +190,71 @@ function createTelegramMessages(companies, startingNumber) {
   }
 
   return messages;
+}
+async function sendCompaniesNamesPage(
+  ctx,
+  offset = 0
+) {
+  const companyNames = getAllCompanyNames();
+  const pageSize = 30;
+
+  const page = companyNames.slice(
+    offset,
+    offset + pageSize
+  );
+
+  if (!page.length) {
+    return ctx.reply(
+      "❌ لا توجد شركات مسجلة."
+    );
+  }
+
+  const buttons = page.map(
+    (companyName, index) => [
+      Markup.button.callback(
+        companyName,
+        `company_name:${offset + index}`
+      )
+    ]
+  );
+
+  if (offset + pageSize < companyNames.length) {
+    buttons.push([
+      Markup.button.callback(
+        "➡️ الشركات التالية",
+        `big_companies_page:${offset + pageSize}`
+      )
+    ]);
+  }
+
+  if (offset > 0) {
+    buttons.push([
+      Markup.button.callback(
+        "⬅️ الشركات السابقة",
+        `big_companies_page:${Math.max(
+          0,
+          offset - pageSize
+        )}`
+      )
+    ]);
+  }
+
+  buttons.push([
+    Markup.button.callback(
+      "🔙 رجوع",
+      "company_emails"
+    )
+  ]);
+
+  return ctx.reply(
+    `🏢 الشركات المسجلة
+
+📊 الإجمالي: ${companyNames.length}
+📄 عرض ${offset + 1} إلى ${
+      offset + page.length
+    }`,
+    Markup.inlineKeyboard(buttons)
+  );
 }
 
 async function sendEmailPage(ctx, regionId, offset = 0) {
@@ -443,6 +520,11 @@ export function registerCompanyEmails(bot, sessions) {
     return ctx.reply(
       "📧 اختر المنطقة التي تريد إيميلات الشركات فيها:",
       Markup.inlineKeyboard([
+      [ Markup.button.callback(
+  "🏢 إيميلات الشركات الكبيرة",
+  "big_companies"
+)
+],
         [
   Markup.button.callback(
     "🔍 البحث بالمسمى الوظيفي",
@@ -495,6 +577,105 @@ export function registerCompanyEmails(bot, sessions) {
       ])
     );
   });
+  bot.action(
+  "big_companies",
+  async (ctx) => {
+    await ctx.answerCbQuery();
+
+    return sendCompaniesNamesPage(ctx, 0);
+  }
+);
+
+bot.action(
+  /^big_companies_page:(\d+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const offset = Number(ctx.match[1]);
+
+    return sendCompaniesNamesPage(
+      ctx,
+      offset
+    );
+  }
+);
+bot.action(
+  /^company_name:(\d+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const companyNames =
+      getAllCompanyNames();
+
+    const companyIndex =
+      Number(ctx.match[1]);
+
+    const companyName =
+      companyNames[companyIndex];
+
+    if (!companyName) {
+      return ctx.reply(
+        "❌ لم يتم العثور على الشركة."
+      );
+    }
+
+    const results = readCompanies().filter(
+      (item) =>
+        item.company.trim() === companyName
+    );
+
+    if (!results.length) {
+      return ctx.reply(
+        "❌ لا توجد بيانات لهذه الشركة."
+      );
+    }
+
+    let text = `🏢 ${companyName}\n\n`;
+
+    results.forEach((item, index) => {
+      text += `${index + 1}.\n`;
+
+      if (item.email) {
+        text += `📧 ${item.email}\n`;
+      }
+
+      if (item.city) {
+        text += `📍 ${item.city}\n`;
+      }
+
+      if (item.jobTitle) {
+        text += `💼 ${item.jobTitle}\n`;
+      }
+
+      text += "\n";
+    });
+
+    return ctx.reply(
+      text.slice(0, 3900),
+      Markup.inlineKeyboard([
+        [
+          Markup.button.callback(
+            "🔙 كل الشركات",
+            "big_companies"
+          )
+        ],
+        [
+          Markup.button.callback(
+            "🏠 الرئيسية",
+            "back_to_menu"
+          )
+        ]
+      ])
+    );
+  }
+);
+
+  bot.action("big_companies", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  // عرض قائمة الشركات الكبيرة
+});
+
   bot.action("emails_search_next", async (ctx) => {
   await ctx.answerCbQuery();
 
