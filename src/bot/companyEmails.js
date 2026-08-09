@@ -100,16 +100,17 @@ function readCompanies() {
     defval: ""
   });
 
-  return rows
-    .map((row) => ({
-      email: String(row.Email || "").trim(),
-      city: String(row.City || "").trim(),
-      company: String(row.Company || "").trim(),
-      jobTitle: String(row["المسمى الوظيفي"] || "").trim()
-    }))
+return rows
+  .map((row) => ({
+    email: String(row.Email || "").trim(),
+    city: String(row.City || "").trim(),
+    company: String(row.Company || "").trim(),
+    jobTitle: String(row["المسمى الوظيفي"] || "").trim(),
+    addedDate: String(row["تاريخ الإضافة"] || "").trim()
+  }))
     .filter((row) => row.email);
 }
-function getAllCompanyNames() {
+  function getAllCompanyNames() {
   const companies = readCompanies();
 
   return [
@@ -453,6 +454,16 @@ export function searchCompaniesByJobTitle(query) {
       )
   );
 }
+function getRecentCompanies() {
+  const companies = readCompanies();
+
+  return companies
+    .filter((company) => company.addedDate)
+    .sort((a, b) =>
+      String(b.addedDate).localeCompare(String(a.addedDate))
+    );
+}
+
 async function sendEmailSearchPage(ctx, sessions) {
   const session = sessions.get(ctx.from.id);
 
@@ -535,6 +546,12 @@ export function registerCompanyEmails(bot, sessions) {
     "emails_search_title"
   )
 ],
+[
+  Markup.button.callback(
+    "🆕 الإيميلات الحديثة",
+    "recent_emails"
+  )
+],
 
         [
           Markup.button.callback(
@@ -581,6 +598,33 @@ export function registerCompanyEmails(bot, sessions) {
       ])
     );
   });
+  bot.action("recent_emails", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const results = getRecentCompanies();
+
+  if (!results.length) {
+    return ctx.reply(
+      "📭 لا توجد إيميلات حديثة حاليًا."
+    );
+  }
+
+  const latestDate = results[0].addedDate;
+
+  const latestResults = results.filter(
+    (company) => company.addedDate === latestDate
+  );
+
+  sessions.set(ctx.from.id, {
+    step: "emails_search_results",
+    emailSearchResults: latestResults,
+    emailSearchOffset: 0,
+    emailSearchQuery: `الإيميلات المضافة بتاريخ ${latestDate}`
+  });
+
+  return sendEmailSearchPage(ctx, sessions);
+});
+
   bot.action(
   "big_companies",
   async (ctx) => {
@@ -663,6 +707,12 @@ bot.action(
             "big_companies"
           )
         ],
+        [
+  Markup.button.callback(
+    "🆕 الإيميلات الحديثة",
+    "recent_emails"
+  )
+],
         [
           Markup.button.callback(
             "🏠 الرئيسية",
