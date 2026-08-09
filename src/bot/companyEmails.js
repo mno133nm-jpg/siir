@@ -463,7 +463,24 @@ function getRecentCompanies() {
       String(b.addedDate).localeCompare(String(a.addedDate))
     );
 }
+export function getLatestAddedBatch() {
+  const companies = getRecentCompanies();
 
+  if (!companies.length) {
+    return null;
+  }
+
+  const latestDate = companies[0].addedDate;
+
+  const latestCompanies = companies.filter(
+    (company) => company.addedDate === latestDate
+  );
+
+  return {
+    latestDate,
+    count: latestCompanies.length
+  };
+}
 async function sendEmailSearchPage(ctx, sessions) {
   const session = sessions.get(ctx.from.id);
 

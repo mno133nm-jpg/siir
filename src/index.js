@@ -4,7 +4,8 @@ import { menu } from "./bot/menu.js";
 
 import {
   registerCompanyEmails,
-  searchCompaniesByJobTitle
+  searchCompaniesByJobTitle,
+  getLatestAddedBatch
 } from "./bot/companyEmails.js";
 
 import { ai } from "./services/ai.js";
@@ -81,6 +82,68 @@ function user(ctx) {
 
   return data.users[id];
 
+}
+async function notifyUsersAboutNewEmails() {
+  try {
+    const latest = getLatestAddedBatch();
+
+    if (!latest) {
+      console.log("📭 لا توجد إيميلات حديثة للتنبيه.");
+      return;
+    }
+
+    const data = db();
+    data.meta = data.meta || {};
+
+    // منع تكرار التنبيه لنفس الدفعة
+    if (data.meta.lastNotifiedEmailDate === latest.latestDate) {
+      console.log("✅ تم إرسال تنبيه هذه الدفعة سابقًا.");
+      return;
+    }
+
+    const userIds = Object.keys(data.users || {});
+
+    console.log(
+      `🔔 سيتم إرسال تنبيه إلى ${userIds.length} مستخدم`
+    );
+
+    for (const userId of userIds) {
+      try {
+        await bot.telegram.sendMessage(
+          userId,
+          `🔔 إيميلات جديدة في Sir AI
+
+🆕 تمت إضافة ${latest.count} إيميل جديد
+📅 تاريخ الإضافة: ${latest.latestDate}
+
+اضغط لعرض الإيميلات الجديدة فقط 👇`,
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "🆕 عرض الإيميلات الجديدة",
+                    callback_data: "recent_emails"
+                  }
+                ]
+              ]
+            }
+          }
+        );
+      } catch (error) {
+        console.log(
+          `تعذر إرسال التنبيه للمستخدم ${userId}: ${error.message}`
+        );
+      }
+    }
+
+    data.meta.lastNotifiedEmailDate = latest.latestDate;
+    save(data);
+
+    console.log("✅ تم إرسال تنبيهات الإيميلات الجديدة.");
+  } catch (error) {
+    console.error("❌ خطأ في تنبيهات الإيميلات:", error);
+  }
 }
 
 // =====================
@@ -1246,10 +1309,13 @@ bot.catch((err) => {
 // =====================
 // Launch
 // =====================
-bot.launch();
+bot.launch().then(async () => {
+  console.log(
+    "✅ Sir AI Telegram Bot is running"
+  );
 
-
-console.log("✅ Sir AI Telegram Bot is running");
+  await notifyUsersAboutNewEmails();
+});
 
 // =====================
 // Stop
