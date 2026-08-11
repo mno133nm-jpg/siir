@@ -10,35 +10,55 @@ function escapeHtml(text = "") {
 }
 
 function formatCVText(text = "") {
-  const safeText = escapeHtml(text);
-
-  return safeText
+  const lines = String(text)
     .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+    // لا نعرض المدينة نهائيًا
+    .filter((line) =>
+      !line.startsWith("المدينة:")
+    )
+
+    // لا نعرض الحقول الفارغة
+    .filter((line) =>
+      !line.includes("غير مذكور") &&
+      !line.includes("غير متوفر")
+    )
+
+    .filter((line) =>
+  !line.startsWith("رقم الجوال:") &&
+  !line.startsWith("البريد الإلكتروني:")
+)
+
+    // لا نعرض كلمات ATS داخل السيرة
+    .filter((line) =>
+      !line.includes("كلمات مفتاحية لأنظمة ATS") &&
+      !line.includes("كلمات مفتاحية ATS")
+    );
+
+  const headings = [
+    "معلومات التواصل",
+    "الملخص المهني",
+    "التعليم",
+    "الخبرات العملية",
+    "الخبرات",
+    "الدورات والشهادات",
+    "الدورات التدريبية",
+    "المهارات",
+    "اللغات",
+    "العضويات المهنية"
+  ];
+
+  return lines
     .map((line) => {
-      const value = line.trim();
-
-      if (!value) {
-        return `<div class="space"></div>`;
-      }
-
-      const headings = [
-        "معلومات التواصل",
-        "الملخص المهني",
-        "التعليم",
-        "الخبرات العملية",
-        "الخبرات",
-        "المهارات",
-        "الدورات والشهادات",
-        "الدورات التدريبية",
-        "اللغات",
-        "العضويات المهنية"
-      ];
+      const value = escapeHtml(line);
 
       if (
         headings.some(
           (heading) =>
-            value === heading ||
-            value.startsWith(`${heading}:`)
+            line === heading ||
+            line.startsWith(`${heading}:`)
         )
       ) {
         return `
@@ -49,13 +69,12 @@ function formatCVText(text = "") {
       }
 
       if (
-        value.startsWith("-") ||
-        value.startsWith("•") ||
-        value.startsWith("▪")
+        line.startsWith("-") ||
+        line.startsWith("•") ||
+        line.startsWith("▪")
       ) {
-        const cleaned = value.replace(
-          /^[-•▪]\s*/,
-          ""
+        const cleaned = escapeHtml(
+          line.replace(/^[-•▪]\s*/, "")
         );
 
         return `
@@ -66,7 +85,11 @@ function formatCVText(text = "") {
         `;
       }
 
-      return `<div class="line">${value}</div>`;
+      return `
+        <div class="line">
+          ${value}
+        </div>
+      `;
     })
     .join("");
 }
@@ -108,7 +131,7 @@ body {
   margin: 0;
   padding: 0;
   direction: rtl;
-  font-family: Arial, "Tahoma", sans-serif;
+font-family: "Arial", "Noto Sans Arabic", "Tahoma", sans-serif;
   color: #1f2933;
   background: #ffffff;
   font-size: 11.5px;
