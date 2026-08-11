@@ -9,7 +9,7 @@ import {
 } from "./bot/companyEmails.js";
 
 import { ai } from "./services/ai.js";
-import { registerCV } from "./bot/cv.js";
+import { registerCV } from "./bot/createCV.js";
 import { getOrCreateJobTemplate } from "./services/jobTemplateService.js";
 import { getJobTemplate } from "./services/jobMatcher.js";
 import { db, save } from "./services/database.js";

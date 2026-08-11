@@ -86,7 +86,6 @@ function createCVHtml(session) {
 
   const phone = data.phone || "";
   const email = data.email || "";
-  const city = data.city || "";
 
   return `
 <!DOCTYPE html>
@@ -232,11 +231,6 @@ body {
         : ""
     }
 
-    ${
-      city
-        ? `<span>📍 ${escapeHtml(city)}</span>`
-        : ""
-    }
 
   </div>
 
