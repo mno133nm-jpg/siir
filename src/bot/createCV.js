@@ -25,58 +25,96 @@ function escapeHtml(text = "") {
     .replace(/>/g, "&gt;");
 }
 
-function formatCVText(text = "", name = "") {
-      const lines = String(text)
+function formatCVText(text = "", name = "", phone = "", email = "", jobTitle = "") {
+  const clean = (value = "") =>
+    String(value)
+      .trim()
+      .replace(/\s+/g, " ");
+
+  const cleanName = clean(name);
+  const cleanPhone = clean(phone);
+  const cleanEmail = clean(email).toLowerCase();
+  const cleanJobTitle = clean(jobTitle);
+
+  const lines = String(text)
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .filter((line) =>
-  line !== String(name || "").trim()
-)
 
-    // لا نعرض المدينة نهائيًا
-    .filter((line) =>
-      !line.startsWith("المدينة:")
+    // حذف الاسم إذا تكرر داخل جسم السيرة
+    .filter((line) => clean(line) !== cleanName)
+
+    // حذف المسمى الوظيفي المستهدف إذا ظهر كسطر مستقل
+    .filter((line) => clean(line) !== cleanJobTitle)
+
+    // حذف عناوين المعلومات الشخصية والتواصل
+    .filter((line) => {
+      const value = clean(line);
+
+      return ![
+        "معلومات التواصل",
+        "المعلومات الشخصية",
+        "البيانات الشخصية",
+        "معلومات شخصية",
+        "بيانات التواصل"
+      ].includes(value);
+    })
+
+    // حذف الجوال والإيميل المكررين حتى لو جاءا بدون عنوان
+    .filter((line) => {
+      const value = clean(line);
+      const lower = value.toLowerCase();
+
+      if (cleanPhone && value.includes(cleanPhone)) {
+        return false;
+      }
+
+      if (cleanEmail && lower.includes(cleanEmail)) {
+        return false;
+      }
+
+      return true;
+    })
+
+    // حذف حقول التواصل والمدينة والعنوان
+    .filter((line) => {
+      const value = clean(line);
+
+      return (
+        !value.startsWith("رقم الجوال:") &&
+        !value.startsWith("رقم الجوال") &&
+        !value.startsWith("الجوال:") &&
+        !value.startsWith("الجوال") &&
+        !value.startsWith("الهاتف:") &&
+        !value.startsWith("الهاتف") &&
+        !value.startsWith("رقم الهاتف:") &&
+        !value.startsWith("البريد الإلكتروني:") &&
+        !value.startsWith("البريد الالكتروني:") &&
+        !value.startsWith("الإيميل:") &&
+        !value.startsWith("الايميل:") &&
+        !value.startsWith("المدينة:") &&
+        !value.startsWith("العنوان:")
+      );
+    })
+
+    // حذف أي سطر عبارة عن مربعات/رموز تالفة فقط
+    .filter((line) => {
+      const value = clean(line);
+      return !/^[□�\s|]+$/.test(value);
+    })
+
+    // حذف الحقول غير الموجودة
+    .filter(
+      (line) =>
+        !line.includes("غير مذكور") &&
+        !line.includes("غير متوفر")
     )
 
-    // لا نعرض الحقول الفارغة
-    .filter((line) =>
-      !line.includes("غير مذكور") &&
-      !line.includes("غير متوفر")
-    )
-
-.filter((line) =>
-  !line.startsWith("رقم الجوال:") &&
-  !line.startsWith("الجوال:") &&
-  !line.startsWith("الهاتف:") &&
-  !line.startsWith("رقم الهاتف:") &&
-  !line.startsWith("البريد الإلكتروني:") &&
-  !line.startsWith("البريد الالكتروني:")
-)
-.filter((line) => {
-  const value = line.trim();
-
-  return (
-    value !== String(name || "").trim() &&
-    value !== "معلومات التواصل" &&
-    value !== "المعلومات الشخصية" &&
-    value !== "البيانات الشخصية" &&
-    !value.startsWith("رقم الجوال:") &&
-    !value.startsWith("الجوال:") &&
-    !value.startsWith("الهاتف:") &&
-    !value.startsWith("رقم الهاتف:") &&
-    !value.startsWith("البريد الإلكتروني:") &&
-    !value.startsWith("البريد الالكتروني:") &&
-    !value.startsWith("المدينة:") &&
-    !value.startsWith("العنوان:")
-  );
-})
-
-
-    // لا نعرض كلمات ATS داخل السيرة
-    .filter((line) =>
-      !line.includes("كلمات مفتاحية لأنظمة ATS") &&
-      !line.includes("كلمات مفتاحية ATS")
+    // عدم عرض ATS كقسم داخل السيرة
+    .filter(
+      (line) =>
+        !line.includes("كلمات مفتاحية لأنظمة ATS") &&
+        !line.includes("كلمات مفتاحية ATS")
     );
 
   const headings = [
@@ -126,31 +164,30 @@ function formatCVText(text = "", name = "") {
         `;
       }
 
+      const isJobTitle = line.startsWith("المسمى:");
 
-const isJobTitle = line.startsWith("المسمى:");
+      const isCompany =
+        line.startsWith("اسم الشركة:") ||
+        line.startsWith("اسم الجهة:");
 
-const isCompany =
-  line.startsWith("اسم الشركة:") ||
-  line.startsWith("اسم الجهة:");
+      const isPeriod =
+        line.startsWith("الفترة:");
 
-const isPeriod =
-  line.startsWith("الفترة:");
+      if (isJobTitle || isCompany || isPeriod) {
+        return `
+          <div class="experience-line ${
+            isJobTitle ? "job-heading" : ""
+          }">
+            ${value}
+          </div>
+        `;
+      }
 
-if (isJobTitle || isCompany || isPeriod) {
-  return `
-    <div class="experience-line ${
-      isJobTitle ? "job-heading" : ""
-    }">
-      ${value}
-    </div>
-  `;
-}
-
-return `
-  <div class="line">
-    ${value}
-  </div>
-`;
+      return `
+        <div class="line">
+          ${value}
+        </div>
+      `;
     })
     .join("");
 }
@@ -345,7 +382,13 @@ font-family: "SirAIArabic", sans-serif;
 </div>
 
 <div class="content">
-${formatCVText(cvText, name)}
+${formatCVText(
+  cvText,
+  name,
+  phone,
+  email,
+  data.jobTitle || data.targetJobTitle || ""
+)}
 </div>
 
 </body>
