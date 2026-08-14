@@ -2,6 +2,22 @@ import fs from "fs";
 import path from "path";
 import puppeteer from "puppeteer";
 
+const arabicFontPath = path.resolve(
+  "node_modules/@fontsource/noto-sans-arabic/files/noto-sans-arabic-arabic-400-normal.woff2"
+);
+
+const arabicBoldFontPath = path.resolve(
+  "node_modules/@fontsource/noto-sans-arabic/files/noto-sans-arabic-arabic-700-normal.woff2"
+);
+
+const arabicFontBase64 = fs
+  .readFileSync(arabicFontPath)
+  .toString("base64");
+
+const arabicBoldFontBase64 = fs
+  .readFileSync(arabicBoldFontPath)
+  .toString("base64");
+
 function escapeHtml(text = "") {
   return String(text)
     .replace(/&/g, "&amp;")
@@ -117,7 +133,19 @@ function createCVHtml(session) {
 <meta charset="UTF-8">
 
 <style>
+@font-face {
+  font-family: "SirAIArabic";
+  src: url(data:font/woff2;base64,${arabicFontBase64}) format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
 
+@font-face {
+  font-family: "SirAIArabic";
+  src: url(data:font/woff2;base64,${arabicBoldFontBase64}) format("woff2");
+  font-weight: 700;
+  font-style: normal;
+}
 @page {
   size: A4;
   margin: 14mm 16mm;
@@ -131,7 +159,7 @@ body {
   margin: 0;
   padding: 0;
   direction: rtl;
-font-family: "Arial", "Noto Sans Arabic", "Tahoma", sans-serif;
+font-family: "SirAIArabic", sans-serif;
   color: #1f2933;
   background: #ffffff;
   font-size: 11.5px;
@@ -328,16 +356,19 @@ export function registerCV(bot, sessions) {
         const page =
           await browser.newPage();
 
-        await page.setContent(
-          html,
-          {
-            waitUntil:
-              "networkidle0"
-          }
-        );
+await page.setContent(
+  html,
+  {
+    waitUntil: "networkidle0"
+  }
+);
 
-        await page.pdf({
-          path: pdfPath,
+await page.evaluate(async () => {
+  await document.fonts.ready;
+});
+
+await page.pdf({
+              path: pdfPath,
           format: "A4",
           printBackground: true,
           margin: {
