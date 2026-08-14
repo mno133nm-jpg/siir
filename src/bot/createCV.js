@@ -107,27 +107,21 @@ function formatCVText(text = "", name = "") {
         `;
       }
 
+
 const isJobTitle = line.startsWith("المسمى:");
+
 const isCompany =
   line.startsWith("اسم الشركة:") ||
   line.startsWith("اسم الجهة:");
-const isPeriod = line.startsWith("الفترة:");
+
+const isPeriod =
+  line.startsWith("الفترة:");
 
 if (isJobTitle || isCompany || isPeriod) {
   return `
     <div class="experience-line ${
       isJobTitle ? "job-heading" : ""
     }">
-      ${value}
-    </div>
-  `;
-}
-
-if (experienceLabel) {
-  const isJobTitle = line.startsWith("المسمى:");
-
-  return `
-    <div class="experience-line ${isJobTitle ? "job-heading" : ""}">
       ${value}
     </div>
   `;
