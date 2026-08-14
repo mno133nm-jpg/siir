@@ -24,6 +24,39 @@ function escapeHtml(text = "") {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
+function removeDuplicateCVContent(text = "") {
+  const lines = String(text)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const firstSummaryIndex = lines.findIndex(
+    (line) =>
+      line === "الملخص المهني" ||
+      line.startsWith("الملخص المهني:")
+  );
+
+  if (firstSummaryIndex === -1) {
+    return text;
+  }
+
+  const secondSummaryIndex = lines.findIndex(
+    (line, index) =>
+      index > firstSummaryIndex &&
+      (
+        line === "الملخص المهني" ||
+        line.startsWith("الملخص المهني:")
+      )
+  );
+
+  if (secondSummaryIndex === -1) {
+    return lines.join("\n");
+  }
+
+  return lines
+    .slice(0, secondSummaryIndex)
+    .join("\n");
+}
 
 function formatCVText(text = "", name = "", phone = "", email = "", jobTitle = "") {
   const clean = (value = "") =>
@@ -230,7 +263,9 @@ return contentLines
 
 function createCVHtml(session) {
   const data = session.cvData || {};
-  const cvText = session.generatedCV || "";
+const cvText = removeDuplicateCVContent(
+  session.generatedCV || ""
+);
 
   const name =
     data.name ||
