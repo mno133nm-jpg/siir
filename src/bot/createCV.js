@@ -33,9 +33,6 @@ function formatCVText(text = "", name = "") {
     .filter((line) =>
   line !== String(name || "").trim()
 )
-    .filter((line) =>
-  line !== session?.cvData?.name
-)
 
     // لا نعرض المدينة نهائيًا
     .filter((line) =>
