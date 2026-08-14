@@ -230,9 +230,54 @@ const contentLines =
     ? lines.slice(summaryIndex)
     : lines;
 
+let insideSkills = false;
+
 return contentLines
   .map((line) => {
-          const value = escapeHtml(line);
+              const value = escapeHtml(line);
+if (line === "المهارات") {
+  insideSkills = true;
+
+  return `
+    <div class="section-title">
+      ${value}
+    </div>
+    <div class="skills-grid">
+  `;
+}
+
+if (
+  insideSkills &&
+  (
+    line === "اللغات" ||
+    line === "العضويات المهنية" ||
+    line === "الدورات والشهادات" ||
+    line === "الدورات التدريبية" ||
+    line === "التعليم" ||
+    line === "الخبرات" ||
+    line === "الخبرات العملية"
+  )
+) {
+  insideSkills = false;
+
+  return `
+    </div>
+    <div class="section-title">
+      ${value}
+    </div>
+  `;
+}
+if (insideSkills) {
+  const cleaned = escapeHtml(
+    line.replace(/^[-•▪]\s*/, "")
+  );
+
+  return `
+    <div class="skill-item">
+      ${cleaned}
+    </div>
+  `;
+}
 
       if (
         headings.some(
@@ -265,24 +310,72 @@ return contentLines
         `;
       }
 
-      const isJobTitle = line.startsWith("المسمى:");
+if (line.startsWith("المسمى:")) {
+  const text = escapeHtml(
+    line.replace("المسمى:", "").trim()
+  );
 
-      const isCompany =
-        line.startsWith("اسم الشركة:") ||
-        line.startsWith("اسم الجهة:");
+  return `
+    <div class="experience-title">
+      ${text}
+    </div>
+  `;
+}
 
-      const isPeriod =
-        line.startsWith("الفترة:");
+if (
+  line.startsWith("اسم الشركة:") ||
+  line.startsWith("اسم الجهة:")
+) {
+  const text = escapeHtml(
+    line
+      .replace("اسم الشركة:", "")
+      .replace("اسم الجهة:", "")
+      .trim()
+  );
 
-      if (isJobTitle || isCompany || isPeriod) {
-        return `
-          <div class="experience-line ${
-            isJobTitle ? "job-heading" : ""
-          }">
-            ${value}
-          </div>
-        `;
-      }
+  return `
+    <div class="experience-company">
+      ${text}
+    </div>
+  `;
+}
+
+if (line.startsWith("الفترة:")) {
+  const text = escapeHtml(
+    line.replace("الفترة:", "").trim()
+  );
+
+  return `
+    <div class="experience-date">
+      ${text}
+    </div>
+  `;
+}
+if (
+  line.startsWith("المؤهل:") ||
+  line.startsWith("التخصص:") ||
+  line.startsWith("الجهة التعليمية:") ||
+  line.startsWith("الجامعة:") ||
+  line.startsWith("الكلية:") ||
+  line.startsWith("سنة التخرج:")
+) {
+  return `
+    <div class="education-line">
+      ${value}
+    </div>
+  `;
+}
+
+if (
+  line.startsWith("الدورة:") ||
+  line.startsWith("الشهادة:")
+) {
+  return `
+    <div class="course-line">
+      ${value}
+    </div>
+  `;
+}
 
       return `
         <div class="line">
@@ -290,7 +383,7 @@ return contentLines
         </div>
       `;
     })
-    .join("");
+.join("") + (insideSkills ? "</div>" : "");
 }
 
 function createCVHtml(session) {
@@ -404,6 +497,61 @@ font-family: "SirAIArabic", sans-serif;
   line-height: 1.55;
   page-break-after: avoid;
 }
+  .experience-title {
+  font-size: 11.8px;
+  font-weight: 700;
+  color: #111;
+  margin-top: 9px;
+  margin-bottom: 0;
+}
+
+.experience-company {
+  font-size: 11px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0;
+}
+
+.experience-date {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 4px;
+}
+  .education-line {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  text-align: right;
+  line-height: 1.55;
+}
+
+.course-line {
+  font-size: 10.8px;
+  margin-bottom: 2px;
+  text-align: right;
+  line-height: 1.55;
+}
+  .skills-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 18px;
+  row-gap: 3px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+}
+
+.skill-item {
+  font-size: 10.8px;
+  line-height: 1.5;
+  position: relative;
+  padding-right: 10px;
+}
+
+.skill-item::before {
+  content: "•";
+  position: absolute;
+  right: 0;
+}
 .job-heading {
   margin-top: 8px;
   font-size: 11.5px;
@@ -467,15 +615,6 @@ font-family: "SirAIArabic", sans-serif;
 
 </div>
 
-<div class="content">
-  ${formatCVText(
-    cvText,
-    name,
-    phone,
-    email,
-    data.jobTitle || data.targetJobTitle || ""
-  )}
-</div>
 
 <div class="content">
 ${formatCVText(
