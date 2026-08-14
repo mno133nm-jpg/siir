@@ -25,11 +25,17 @@ function escapeHtml(text = "") {
     .replace(/>/g, "&gt;");
 }
 
-function formatCVText(text = "") {
-  const lines = String(text)
+function formatCVText(text = "", name = "") {
+      const lines = String(text)
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
+    .filter((line) =>
+  line !== String(name || "").trim()
+)
+    .filter((line) =>
+  line !== session?.cvData?.name
+)
 
     // لا نعرض المدينة نهائيًا
     .filter((line) =>
@@ -42,9 +48,13 @@ function formatCVText(text = "") {
       !line.includes("غير متوفر")
     )
 
-    .filter((line) =>
+.filter((line) =>
   !line.startsWith("رقم الجوال:") &&
-  !line.startsWith("البريد الإلكتروني:")
+  !line.startsWith("الجوال:") &&
+  !line.startsWith("الهاتف:") &&
+  !line.startsWith("رقم الهاتف:") &&
+  !line.startsWith("البريد الإلكتروني:") &&
+  !line.startsWith("البريد الالكتروني:")
 )
 
     // لا نعرض كلمات ATS داخل السيرة
@@ -54,7 +64,6 @@ function formatCVText(text = "") {
     );
 
   const headings = [
-    "معلومات التواصل",
     "الملخص المهني",
     "التعليم",
     "الخبرات العملية",
@@ -101,11 +110,37 @@ function formatCVText(text = "") {
         `;
       }
 
-      return `
-        <div class="line">
-          ${value}
-        </div>
-      `;
+const isJobTitle = line.startsWith("المسمى:");
+const isCompany =
+  line.startsWith("اسم الشركة:") ||
+  line.startsWith("اسم الجهة:");
+const isPeriod = line.startsWith("الفترة:");
+
+if (isJobTitle || isCompany || isPeriod) {
+  return `
+    <div class="experience-line ${
+      isJobTitle ? "job-heading" : ""
+    }">
+      ${value}
+    </div>
+  `;
+}
+
+if (experienceLabel) {
+  const isJobTitle = line.startsWith("المسمى:");
+
+  return `
+    <div class="experience-line ${isJobTitle ? "job-heading" : ""}">
+      ${value}
+    </div>
+  `;
+}
+
+return `
+  <div class="line">
+    ${value}
+  </div>
+`;
     })
     .join("");
 }
@@ -118,10 +153,6 @@ function createCVHtml(session) {
     data.name ||
     "السيرة الذاتية";
 
-  const jobTitle =
-    data.jobTitle ||
-    data.targetJobTitle ||
-    "";
 
   const phone = data.phone || "";
   const email = data.email || "";
@@ -168,34 +199,30 @@ font-family: "SirAIArabic", sans-serif;
 
 .header {
   text-align: right;
-  border-bottom: 2px solid #222;
-  padding-bottom: 12px;
-  margin-bottom: 17px;
+  border-bottom: 1px solid #222;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .name {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
-  margin-bottom: 2px;
+  margin-bottom: 6px;
   color: #111;
-}
-
-.job-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 7px;
-  color: #444;
 }
 
 .contact {
   font-size: 10.5px;
-  color: #444;
+  color: #333;
   direction: rtl;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .contact span {
   display: inline-block;
-  margin-left: 12px;
+  margin-left: 0;
 }
 
 .content {
@@ -203,27 +230,43 @@ font-family: "SirAIArabic", sans-serif;
 }
 
 .section-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  border-bottom: 1px solid #777;
-  padding-bottom: 3px;
-  margin-top: 15px;
-  margin-bottom: 7px;
   color: #111;
+  margin-top: 12px;
+  margin-bottom: 5px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #222;
   page-break-after: avoid;
 }
 
 .line {
-  margin-bottom: 3px;
+  font-size: 11px;
+  margin-bottom: 2px;
   text-align: right;
+  line-height: 1.65;
 }
-
-.bullet {
+.experience-line {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 1px;
+  text-align: right;
+  line-height: 1.55;
+  page-break-after: avoid;
+}
+.job-heading {
+  margin-top: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+  .bullet {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 7px;
-  margin-bottom: 2px;
+  gap: 5px;
+  margin-bottom: 1px;
+  font-size: 10.8px;
+  line-height: 1.6;
   page-break-inside: avoid;
 }
 
@@ -258,17 +301,21 @@ font-family: "SirAIArabic", sans-serif;
     ${escapeHtml(name)}
   </div>
 
-  ${
-    jobTitle
-      ? `
-        <div class="job-title">
-          ${escapeHtml(jobTitle)}
-        </div>
-      `
-      : ""
-  }
-
   <div class="contact">
+    ${
+      phone
+        ? `<span>${escapeHtml(phone)}</span>`
+        : ""
+    }
+
+    ${
+      email
+        ? `<span>| ${escapeHtml(email)}</span>`
+        : ""
+    }
+  </div>
+
+</div>
 
     ${
       phone
@@ -288,7 +335,7 @@ font-family: "SirAIArabic", sans-serif;
 </div>
 
 <div class="content">
-  ${formatCVText(cvText)}
+${formatCVText(cvText, name)}
 </div>
 
 </body>
