@@ -400,21 +400,14 @@ font-family: "SirAIArabic", sans-serif;
 
 </div>
 
-    ${
-      phone
-        ? `<span>📱 ${escapeHtml(phone)}</span>`
-        : ""
-    }
-
-    ${
-      email
-        ? `<span>✉ ${escapeHtml(email)}</span>`
-        : ""
-    }
-
-
-  </div>
-
+<div class="content">
+  ${formatCVText(
+    cvText,
+    name,
+    phone,
+    email,
+    data.jobTitle || data.targetJobTitle || ""
+  )}
 </div>
 
 <div class="content">
