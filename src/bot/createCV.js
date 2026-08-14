@@ -53,6 +53,25 @@ function formatCVText(text = "", name = "") {
   !line.startsWith("البريد الإلكتروني:") &&
   !line.startsWith("البريد الالكتروني:")
 )
+.filter((line) => {
+  const value = line.trim();
+
+  return (
+    value !== String(name || "").trim() &&
+    value !== "معلومات التواصل" &&
+    value !== "المعلومات الشخصية" &&
+    value !== "البيانات الشخصية" &&
+    !value.startsWith("رقم الجوال:") &&
+    !value.startsWith("الجوال:") &&
+    !value.startsWith("الهاتف:") &&
+    !value.startsWith("رقم الهاتف:") &&
+    !value.startsWith("البريد الإلكتروني:") &&
+    !value.startsWith("البريد الالكتروني:") &&
+    !value.startsWith("المدينة:") &&
+    !value.startsWith("العنوان:")
+  );
+})
+
 
     // لا نعرض كلمات ATS داخل السيرة
     .filter((line) =>
