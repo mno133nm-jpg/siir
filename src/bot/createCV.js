@@ -61,20 +61,43 @@ function formatCVText(text = "", name = "", phone = "", email = "", jobTitle = "
     })
 
     // حذف الجوال والإيميل المكررين حتى لو جاءا بدون عنوان
-    .filter((line) => {
-      const value = clean(line);
-      const lower = value.toLowerCase();
+.filter((line) => {
+  const value = clean(line);
+  const lower = value.toLowerCase();
 
-      if (cleanPhone && value.includes(cleanPhone)) {
-        return false;
-      }
+  // حذف الجوال المخزن حتى لو ظهر بنفس الصيغة
+  if (cleanPhone && value.includes(cleanPhone)) {
+    return false;
+  }
 
-      if (cleanEmail && lower.includes(cleanEmail)) {
-        return false;
-      }
+  // حذف البريد المخزن
+  if (cleanEmail && lower.includes(cleanEmail)) {
+    return false;
+  }
 
-      return true;
-    })
+  // حذف أي إيميل يظهر داخل جسم السيرة
+  const emailPattern =
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+  if (emailPattern.test(value)) {
+    return false;
+  }
+
+  // حذف أرقام الجوال السعودية بمختلف الصيغ
+  const phonePattern =
+    /(?:\+?966[\s-]?)?0?5\d(?:[\s-]?\d){7}/;
+
+  if (phonePattern.test(value)) {
+    return false;
+  }
+
+  return true;
+})
+.filter((line) => {
+  const value = clean(line);
+
+  return !/^[□�|•·\-\s]+$/.test(value);
+})
 
     // حذف حقول التواصل والمدينة والعنوان
     .filter((line) => {
