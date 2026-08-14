@@ -459,10 +459,11 @@ await page.pdf({
           );
         } catch {}
 
-        await ctx.reply(
-          "❌ حدث خطأ أثناء إنشاء ملف PDF."
-        );
+await ctx.reply(
+  `❌ PDF ERROR TEST
 
+${error?.message || String(error)}`
+);
       } finally {
 
         if (browser) {
