@@ -151,10 +151,23 @@ function formatCVText(text = "", name = "", phone = "", email = "", jobTitle = "
     "اللغات",
     "العضويات المهنية"
   ];
+const summaryIndex = lines.findIndex((line) => {
+  const value = line.trim();
 
-  return lines
-    .map((line) => {
-      const value = escapeHtml(line);
+  return (
+    value === "الملخص المهني" ||
+    value.startsWith("الملخص المهني:")
+  );
+});
+
+const contentLines =
+  summaryIndex >= 0
+    ? lines.slice(summaryIndex)
+    : lines;
+
+return contentLines
+  .map((line) => {
+          const value = escapeHtml(line);
 
       if (
         headings.some(
