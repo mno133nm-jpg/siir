@@ -30,32 +30,64 @@ function removeDuplicateCVContent(text = "") {
     .map((line) => line.trim())
     .filter(Boolean);
 
-  const firstSummaryIndex = lines.findIndex(
-    (line) =>
-      line === "الملخص المهني" ||
-      line.startsWith("الملخص المهني:")
-  );
+  const normalize = (value = "") =>
+    String(value)
+      .trim()
+      .replace(/\s+/g, " ")
+      .replace(/[：:]/g, "");
 
-  if (firstSummaryIndex === -1) {
-    return text;
-  }
+  const sectionNames = [
+    "الملخص المهني",
+    "التعليم",
+    "الخبرات العملية",
+    "الخبرات",
+    "الدورات والشهادات",
+    "الدورات التدريبية",
+    "المهارات",
+    "اللغات",
+    "العضويات المهنية"
+  ];
 
-  const secondSummaryIndex = lines.findIndex(
-    (line, index) =>
-      index > firstSummaryIndex &&
-      (
-        line === "الملخص المهني" ||
-        line.startsWith("الملخص المهني:")
-      )
-  );
+  const isSection = (line) => {
+    const value = normalize(line);
 
-  if (secondSummaryIndex === -1) {
+    return sectionNames.some(
+      (section) => value === normalize(section)
+    );
+  };
+
+  const sectionPositions = [];
+
+  lines.forEach((line, index) => {
+    if (isSection(line)) {
+      sectionPositions.push({
+        index,
+        name: normalize(line)
+      });
+    }
+  });
+
+  // أقل من قسمين: ما فيه شيء واضح ننظفه
+  if (sectionPositions.length < 2) {
     return lines.join("\n");
   }
 
-  return lines
-    .slice(0, secondSummaryIndex)
-    .join("\n");
+  const seenSections = new Set();
+
+  for (const section of sectionPositions) {
+    // أول مرة يظهر العنوان نخليه
+    if (!seenSections.has(section.name)) {
+      seenSections.add(section.name);
+      continue;
+    }
+
+    // إذا بدأ عنوان قسم يتكرر، نعتبر أن النسخة الثانية بدأت هنا
+    return lines
+      .slice(0, section.index)
+      .join("\n");
+  }
+
+  return lines.join("\n");
 }
 
 function formatCVText(text = "", name = "", phone = "", email = "", jobTitle = "") {
