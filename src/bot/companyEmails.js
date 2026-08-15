@@ -748,13 +748,51 @@ bot.on("successful_payment", async (ctx) => {
     ])
   );
 });
-bot.on("pre_checkout_query", async (ctx) => {
-  try {
-    await ctx.answerPreCheckoutQuery(true);
-  } catch (error) {
-    console.error("Pre-checkout error:", error);
-  }
+bot.action("email_sub_30", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  return ctx.replyWithInvoice({
+    title: "Sir AI - اشتراك شهر",
+    description: "وصول كامل لإيميلات الشركات لمدة 30 يوم",
+    payload: `email_subscription_30:${ctx.from.id}`,
+    currency: "XTR",
+    prices: [
+      {
+        label: "اشتراك شهر",
+        amount: 250
+      }
+    ]
+  });
 });
+
+bot.action("email_sub_60", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  return ctx.replyWithInvoice({
+    title: "Sir AI - اشتراك شهرين",
+    description: "وصول كامل لإيميلات الشركات لمدة 60 يوم",
+    payload: `email_subscription_60:${ctx.from.id}`,
+    currency: "XTR",
+    prices: [
+      {
+        label: "اشتراك شهرين",
+        amount: 350
+      }
+    ]
+  });
+});
+
+bot.action("email_access_code", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const session = sessions.get(ctx.from.id) || {};
+
+  session.step = "waiting_email_access_code";
+  sessions.set(ctx.from.id, session);
+
+  return ctx.reply("🎟️ أرسل كود الدخول:");
+});
+
 function activatePaidEmailAccess(
   userId,
   days,
