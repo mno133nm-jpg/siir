@@ -2,9 +2,71 @@ import fs from "fs";
 import path from "path";
 import XLSX from "xlsx";
 import { Markup } from "telegraf";
+import { db, save } from "../services/database.js";
 
 const EXCEL_PATH = path.resolve("companies.xlsx");
 const PAGE_SIZE = 50;
+
+const ACCESS_CODES = {
+  SIRFREE: 60,
+  TIKTOK: 30,
+  VIP2026: 90
+};
+function hasEmailAccess(userId) {
+  const data = db();
+  const user = data.users?.[String(userId)];
+
+  if (!user?.subscriptionExpiresAt) {
+    return false;
+  }
+
+  const expiresAt = new Date(
+    user.subscriptionExpiresAt
+  );
+
+  return expiresAt > new Date();
+}
+function activateEmailAccessByCode(
+  userId,
+  code,
+  days
+) {
+  const data = db();
+
+  data.users = data.users || {};
+
+  const id = String(userId);
+
+  data.users[id] = data.users[id] || {
+    id
+  };
+
+  const currentExpiry =
+    data.users[id].subscriptionExpiresAt
+      ? new Date(
+          data.users[id].subscriptionExpiresAt
+        )
+      : new Date();
+
+  const startDate =
+    currentExpiry > new Date()
+      ? currentExpiry
+      : new Date();
+
+  startDate.setDate(
+    startDate.getDate() + days
+  );
+
+  data.users[id].subscriptionActive = true;
+  data.users[id].subscriptionType = "code";
+  data.users[id].subscriptionCode = code;
+  data.users[id].subscriptionExpiresAt =
+    startDate.toISOString();
+
+  save(data);
+
+  return startDate;
+}
 
 const regions = {
   bigCompanies: {
@@ -548,6 +610,245 @@ async function sendEmailSearchPage(ctx, sessions) {
 export function registerCompanyEmails(bot, sessions) {
     bot.action("company_emails", async (ctx) => {
     await ctx.answerCbQuery();
+    if (!hasEmailAccess(ctx.from.id)) {
+  return ctx.reply(
+    `🔐 اختر طريقة الدخول إلى إيميلات الشركات:
+
+⭐ شهر واحد — 250 نجمة
+🔥 شهران — 350 نجمة
+🎟️ لدي كود دخول`,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          "⭐ شهر — 250",
+          "email_sub_30"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "🔥 شهران — 350",
+          "email_sub_60"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "🎟️ لدي كود دخول",
+          "email_access_code"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "🏠 الرئيسية",
+          "back_to_menu"
+        )
+      ]
+    ])
+  );
+}
+bot.on("successful_payment", async (ctx) => {
+  const payment =
+    ctx.message.successful_payment;
+
+  if (!payment) {
+    return;
+  }
+
+  const payload =
+    payment.invoice_payload || "";
+
+  let days = 0;
+
+  if (payload.startsWith("email_subscription_30:")) {
+    days = 30;
+  }
+
+  if (payload.startsWith("email_subscription_60:")) {
+    days = 60;
+  }
+
+  if (!days) {
+    return;
+  }
+
+  const expiresAt =
+    activatePaidEmailAccess(
+      ctx.from.id,
+      days,
+      payment
+    );
+
+  return ctx.reply(
+    `✅ تم تفعيل اشتراكك بنجاح
+
+⭐ تم الدفع: ${payment.total_amount} نجمة
+⏳ مدة الاشتراك: ${days} يوم
+📅 ينتهي الاشتراك: ${expiresAt.toLocaleDateString("ar-SA")}
+
+📧 تم فتح إيميلات الشركات لك.`,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          "📧 فتح إيميلات الشركات",
+          "company_emails"
+        )
+      ]
+    ])
+  );
+});
+bot.on("pre_checkout_query", async (ctx) => {
+  try {
+    await ctx.answerPreCheckoutQuery(true);
+  } catch (error) {
+    console.error("Pre-checkout error:", error);
+  }
+});
+function activatePaidEmailAccess(
+  userId,
+  days,
+  payment
+) {
+  const data = db();
+
+  data.users = data.users || {};
+
+  const id = String(userId);
+
+  data.users[id] = data.users[id] || {
+    id
+  };
+
+  const now = new Date();
+
+  const currentExpiry =
+    data.users[id].subscriptionExpiresAt
+      ? new Date(data.users[id].subscriptionExpiresAt)
+      : now;
+
+  const startDate =
+    currentExpiry > now
+      ? currentExpiry
+      : now;
+
+  startDate.setDate(
+    startDate.getDate() + days
+  );
+
+  data.users[id].subscriptionActive = true;
+  data.users[id].subscriptionType = "telegram_stars";
+  data.users[id].subscriptionExpiresAt =
+    startDate.toISOString();
+
+  data.users[id].telegramPaymentChargeId =
+    payment.telegram_payment_charge_id;
+
+  data.users[id].lastPaymentStars =
+    payment.total_amount;
+
+  save(data);
+
+  return startDate;
+}
+function activatePaidEmailAccess(
+  userId,
+  days,
+  payment
+) {
+  const data = db();
+
+  data.users = data.users || {};
+
+  const id = String(userId);
+
+  data.users[id] = data.users[id] || {
+    id
+  };
+
+  const now = new Date();
+
+  const currentExpiry =
+    data.users[id].subscriptionExpiresAt
+      ? new Date(data.users[id].subscriptionExpiresAt)
+      : now;
+
+  const startDate =
+    currentExpiry > now
+      ? currentExpiry
+      : now;
+
+  startDate.setDate(
+    startDate.getDate() + days
+  );
+
+  data.users[id].subscriptionActive = true;
+  data.users[id].subscriptionType = "telegram_stars";
+  data.users[id].subscriptionExpiresAt =
+    startDate.toISOString();
+
+  data.users[id].telegramPaymentChargeId =
+    payment.telegram_payment_charge_id;
+
+  data.users[id].lastPaymentStars =
+    payment.total_amount;
+
+  save(data);
+
+  return startDate;
+}
+bot.on("pre_checkout_query", async (ctx) => {
+  try {
+    await ctx.answerPreCheckoutQuery(true);
+  } catch (error) {
+    console.error("Pre-checkout error:", error);
+  }
+});
+bot.action("email_sub_30", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  return ctx.replyWithInvoice({
+    title: "Sir AI - اشتراك شهر",
+    description: "وصول كامل لإيميلات الشركات لمدة 30 يوم",
+    payload: `email_subscription_30:${ctx.from.id}`,
+    currency: "XTR",
+    prices: [
+      {
+        label: "اشتراك شهر",
+        amount: 250
+      }
+    ]
+  });
+});
+
+bot.action("email_sub_60", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  return ctx.replyWithInvoice({
+    title: "Sir AI - اشتراك شهرين",
+    description: "وصول كامل لإيميلات الشركات لمدة 60 يوم",
+    payload: `email_subscription_60:${ctx.from.id}`,
+    currency: "XTR",
+    prices: [
+      {
+        label: "اشتراك شهرين",
+        amount: 350
+      }
+    ]
+  });
+});
+
+bot.action("email_access_code", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const session = sessions.get(ctx.from.id) || {};
+
+  session.step = "waiting_email_access_code";
+
+  sessions.set(ctx.from.id, session);
+
+  return ctx.reply(
+    "🎟️ أرسل كود الدخول:"
+  );
+});
+
 
     return ctx.reply(
       "📧 اختر المنطقة التي تريد إيميلات الشركات فيها:",
@@ -638,6 +939,45 @@ export function registerCompanyEmails(bot, sessions) {
     emailSearchOffset: 0,
     emailSearchQuery: `الإيميلات المضافة بتاريخ ${latestDate}`
   });
+if (session?.step === "waiting_email_access_code") {
+  const code = ctx.message.text
+    .trim()
+    .toUpperCase();
+
+  const days = ACCESS_CODES[code];
+
+  if (!days) {
+    return ctx.reply(
+      "❌ الكود غير صحيح. حاولي مرة أخرى."
+    );
+  }
+
+  const expiresAt = activateEmailAccessByCode(
+    ctx.from.id,
+    code,
+    days
+  );
+
+  sessions.delete(ctx.from.id);
+
+  return ctx.reply(
+    `✅ تم تفعيل الدخول المجاني
+
+🎟️ الكود: ${code}
+⏳ المدة: ${days} يوم
+📅 ينتهي: ${expiresAt.toLocaleDateString("ar-SA")}
+
+📧 تم فتح إيميلات الشركات لك.`,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          "📧 فتح إيميلات الشركات",
+          "company_emails"
+        )
+      ]
+    ])
+  );
+}
 
   return sendEmailSearchPage(ctx, sessions);
 });
