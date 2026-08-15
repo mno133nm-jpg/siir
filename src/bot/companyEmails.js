@@ -8,7 +8,7 @@ const EXCEL_PATH = path.resolve("companies.xlsx");
 const PAGE_SIZE = 50;
 
 const ACCESS_CODES = {
-  TRIAL5: {
+  Sir: {
     hours: 5,
     label: "5 ساعات"
   },
