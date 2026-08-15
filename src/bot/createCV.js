@@ -230,7 +230,7 @@ const contentLines =
     ? lines.slice(summaryIndex)
     : lines;
 
-let insideSkills = false;
+let insideLanguages = false;
 
 return contentLines
   .map((line) => {
@@ -274,6 +274,27 @@ if (insideSkills) {
 
   return `
     <div class="skill-item">
+      ${cleaned}
+    </div>
+  `;
+}
+if (line === "اللغات") {
+  insideLanguages = true;
+
+  return `
+    <div class="section-title">
+      ${value}
+    </div>
+  `;
+}
+
+if (insideLanguages) {
+  const cleaned = escapeHtml(
+    line.replace(/^[-•▪]\s*/, "")
+  );
+
+  return `
+    <div class="language-item">
       ${cleaned}
     </div>
   `;
@@ -422,73 +443,64 @@ const cvText = removeDuplicateCVContent(
 }
 @page {
   size: A4;
-  margin: 14mm 16mm;
+  margin: 12mm 15mm;
 }
-
+  
 * {
   box-sizing: border-box;
 }
-
 body {
   margin: 0;
   padding: 0;
   direction: rtl;
-font-family: "SirAIArabic", sans-serif;
+  font-family: "SirAIArabic", sans-serif;
   color: #1f2933;
   background: #ffffff;
-  font-size: 11.5px;
-  line-height: 1.7;
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .header {
   text-align: right;
   border-bottom: 1px solid #222;
-  padding-bottom: 10px;
-  margin-bottom: 14px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .name {
-  font-size: 24px;
+  font-size: 23px;
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   color: #111;
 }
 
 .contact {
-  font-size: 10.5px;
+  font-size: 10px;
   color: #333;
   direction: rtl;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-}
-
-.contact span {
-  display: inline-block;
-  margin-left: 0;
-}
-
-.content {
-  width: 100%;
+  gap: 8px;
 }
 
 .section-title {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #111;
-  margin-top: 12px;
-  margin-bottom: 5px;
+  margin-top: 10px;
+  margin-bottom: 4px;
   padding-bottom: 2px;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid #444;
   page-break-after: avoid;
 }
 
 .line {
-  font-size: 11px;
-  margin-bottom: 2px;
+  font-size: 10.8px;
+  margin-bottom: 1px;
   text-align: right;
-  line-height: 1.65;
+  line-height: 1.55;
 }
+
 .experience-line {
   font-size: 11px;
   font-weight: 600;
@@ -546,7 +558,19 @@ font-family: "SirAIArabic", sans-serif;
   position: relative;
   padding-right: 10px;
 }
+.language-item {
+  font-size: 10.8px;
+  line-height: 1.6;
+  margin-bottom: 2px;
+  padding-right: 10px;
+  position: relative;
+}
 
+.language-item::before {
+  content: "•";
+  position: absolute;
+  right: 0;
+}
 .skill-item::before {
   content: "•";
   position: absolute;
