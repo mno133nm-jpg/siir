@@ -230,6 +230,7 @@ const contentLines =
     ? lines.slice(summaryIndex)
     : lines;
 
+let insideSkills = false;
 let insideLanguages = false;
 
 return contentLines
@@ -445,7 +446,7 @@ const cvText = removeDuplicateCVContent(
   size: A4;
   margin: 12mm 15mm;
 }
-  
+
 * {
   box-sizing: border-box;
 }
