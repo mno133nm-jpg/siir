@@ -8,9 +8,30 @@ const EXCEL_PATH = path.resolve("companies.xlsx");
 const PAGE_SIZE = 50;
 
 const ACCESS_CODES = {
-  SIRFREE: 60,
-  TIKTOK: 30,
-  VIP2026: 90
+  TRIAL5: {
+    hours: 5,
+    label: "5 ساعات"
+  },
+
+  FREETHAMER: {
+    months: 6,
+    label: "6 شهور"
+  },
+
+  SIRFREE: {
+    days: 60,
+    label: "60 يوم"
+  },
+
+  TIKTOK: {
+    days: 30,
+    label: "30 يوم"
+  },
+
+  VIP2026: {
+    days: 90,
+    label: "90 يوم"
+  }
 };
 function hasEmailAccess(userId) {
   const data = db();
@@ -29,7 +50,7 @@ function hasEmailAccess(userId) {
 function activateEmailAccessByCode(
   userId,
   code,
-  days
+  duration
 ) {
   const data = db();
 
@@ -41,32 +62,64 @@ function activateEmailAccessByCode(
     id
   };
 
+  const now = new Date();
+
+  if (
+  code === "TRIAL5" &&
+  data.users[id].usedTrial5
+) {
+  return {
+    error: "TRIAL_ALREADY_USED"
+  };
+}
+
   const currentExpiry =
     data.users[id].subscriptionExpiresAt
       ? new Date(
           data.users[id].subscriptionExpiresAt
         )
-      : new Date();
+      : now;
 
-  const startDate =
-    currentExpiry > new Date()
-      ? currentExpiry
-      : new Date();
+  const expiresAt =
+    currentExpiry > now
+      ? new Date(currentExpiry)
+      : new Date(now);
 
-  startDate.setDate(
-    startDate.getDate() + days
-  );
+  if (duration.hours) {
+    expiresAt.setHours(
+      expiresAt.getHours() + duration.hours
+    );
+  }
+
+  if (duration.days) {
+    expiresAt.setDate(
+      expiresAt.getDate() + duration.days
+    );
+  }
+
+  if (duration.months) {
+    expiresAt.setMonth(
+      expiresAt.getMonth() + duration.months
+    );
+  }
 
   data.users[id].subscriptionActive = true;
   data.users[id].subscriptionType = "code";
   data.users[id].subscriptionCode = code;
   data.users[id].subscriptionExpiresAt =
-    startDate.toISOString();
+    expiresAt.toISOString();
+
+    if (code === "TRIAL5") {
+  data.users[id].usedTrial5 = true;
+}
 
   save(data);
 
-  return startDate;
+return {
+  expiresAt
+};
 }
+
 
 const regions = {
   bigCompanies: {
@@ -944,19 +997,27 @@ if (session?.step === "waiting_email_access_code") {
     .trim()
     .toUpperCase();
 
-  const days = ACCESS_CODES[code];
+const duration = ACCESS_CODES[code];
 
-  if (!days) {
-    return ctx.reply(
+if (!duration) {
+      return ctx.reply(
       "❌ الكود غير صحيح. حاولي مرة أخرى."
     );
   }
 
-  const expiresAt = activateEmailAccessByCode(
-    ctx.from.id,
-    code,
-    days
+const result = activateEmailAccessByCode(
+  ctx.from.id,
+  code,
+  duration
+);
+
+if (result?.error === "TRIAL_ALREADY_USED") {
+  return ctx.reply(
+    "❌ تم استخدام كود التجربة المجانية لهذا الحساب مسبقًا."
   );
+}
+
+const expiresAt = result.expiresAt;
 
   sessions.delete(ctx.from.id);
 
@@ -964,7 +1025,7 @@ if (session?.step === "waiting_email_access_code") {
     `✅ تم تفعيل الدخول المجاني
 
 🎟️ الكود: ${code}
-⏳ المدة: ${days} يوم
+⏳ المدة: ${duration.label}
 📅 ينتهي: ${expiresAt.toLocaleDateString("ar-SA")}
 
 📧 تم فتح إيميلات الشركات لك.`,
