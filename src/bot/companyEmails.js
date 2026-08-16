@@ -444,15 +444,22 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
 
   const messages = createTelegramMessages(page, from);
 
+let sentMessages = 0;
+
 for (const message of messages) {
-  try {
+  if (
+    typeof message !== "string" ||
+    !message.trim()
+  ) {
     console.log(
-      "📧 Sending email message, length:",
-      message.length
+      "⚠️ تم تجاهل رسالة إيميلات فارغة."
     );
+    continue;
+  }
 
+  try {
     await ctx.reply(message);
-
+    sentMessages++;
   } catch (error) {
     console.error(
       "❌ EMAIL MESSAGE SEND ERROR:",
@@ -468,7 +475,6 @@ ${error?.message || String(error)}`
     break;
   }
 }
-
   const buttons = [];
 
   if (offset + PAGE_SIZE < companies.length) {
