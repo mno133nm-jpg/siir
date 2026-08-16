@@ -1,4 +1,4 @@
-import fs from "fs";
+﻿import fs from "fs";
 import path from "path";
 import XLSX from "xlsx";
 import { Markup } from "telegraf";
@@ -8,31 +8,43 @@ const EXCEL_PATH = path.resolve("companies.xlsx");
 const PAGE_SIZE = 50;
 
 const ACCESS_CODES = {
-  Sir: {
+  SIR: {
     hours: 5,
-    label: "5 ساعات"
+    label: "5 ط³ط§ط¹ط§طھ",
+    oneTime: true
+  },
+
+  TRIAL5: {
+    hours: 5,
+    label: "5 ط³ط§ط¹ط§طھ",
+    oneTime: true
   },
 
   FREETHAMER: {
     months: 6,
-    label: "6 شهور"
+    label: "6 ط´ظ‡ظˆط±",
+    oneTime: true
   },
 
   SIRFREE: {
     days: 60,
-    label: "60 يوم"
+    label: "60 ظٹظˆظ…",
+    oneTime: true
   },
 
   TIKTOK: {
     days: 30,
-    label: "30 يوم"
+    label: "30 ظٹظˆظ…",
+    oneTime: true
   },
 
   VIP2026: {
     days: 90,
-    label: "90 يوم"
+    label: "90 ظٹظˆظ…",
+    oneTime: true
   }
 };
+
 function hasEmailAccess(userId) {
   const data = db();
   const user = data.users?.[String(userId)];
@@ -47,11 +59,7 @@ function hasEmailAccess(userId) {
 
   return expiresAt > new Date();
 }
-function activateEmailAccessByCode(
-  userId,
-  code,
-  duration
-) {
+function activateEmailAccessByCode(userId, code, duration) {
   const data = db();
 
   data.users = data.users || {};
@@ -62,23 +70,25 @@ function activateEmailAccessByCode(
     id
   };
 
+  const user = data.users[id];
+
+  user.usedAccessCodes = user.usedAccessCodes || [];
+
+  // ظ…ظ†ط¹ ط§ط³طھط®ط¯ط§ظ… ظ†ظپط³ ط§ظ„ظƒظˆط¯ ط£ظƒط«ط± ظ…ظ† ظ…ط±ط©
+  if (
+    duration.oneTime &&
+    user.usedAccessCodes.includes(code)
+  ) {
+    return {
+      error: "CODE_ALREADY_USED"
+    };
+  }
+
   const now = new Date();
 
-  if (
-  code === "TRIAL5" &&
-  data.users[id].usedTrial5
-) {
-  return {
-    error: "TRIAL_ALREADY_USED"
-  };
-}
-
-  const currentExpiry =
-    data.users[id].subscriptionExpiresAt
-      ? new Date(
-          data.users[id].subscriptionExpiresAt
-        )
-      : now;
+  const currentExpiry = user.subscriptionExpiresAt
+    ? new Date(user.subscriptionExpiresAt)
+    : now;
 
   const expiresAt =
     currentExpiry > now
@@ -103,35 +113,35 @@ function activateEmailAccessByCode(
     );
   }
 
-  data.users[id].subscriptionActive = true;
-  data.users[id].subscriptionType = "code";
-  data.users[id].subscriptionCode = code;
-  data.users[id].subscriptionExpiresAt =
+  user.subscriptionActive = true;
+  user.subscriptionType = "code";
+  user.subscriptionCode = code;
+  user.subscriptionExpiresAt =
     expiresAt.toISOString();
 
-    if (code === "TRIAL5") {
-  data.users[id].usedTrial5 = true;
-}
+  if (duration.oneTime) {
+    user.usedAccessCodes.push(code);
+  }
 
   save(data);
 
-return {
-  expiresAt
-};
+  return {
+    expiresAt
+  };
 }
-
-
 const regions = {
   bigCompanies: {
-  name: "الشركات الكبيرة",
-  emoji: "🏢",
-  keywords: ["شركة كبيرة"]
-},
+    name: "الشركات الكبيرة",
+    emoji: "🏢",
+    keywords: ["شركة كبيرة"]
+  },
+
   riyadh: {
     name: "الرياض",
     emoji: "📍",
     keywords: ["الرياض"]
   },
+
   eastern: {
     name: "الشرقية",
     emoji: "🌊",
@@ -145,6 +155,7 @@ const regions = {
       "القطيف"
     ]
   },
+
   western: {
     name: "الغربية",
     emoji: "🌴",
@@ -157,6 +168,7 @@ const regions = {
       "ينبع"
     ]
   },
+
   south: {
     name: "الجنوب",
     emoji: "⛰️",
@@ -170,6 +182,7 @@ const regions = {
       "عسير"
     ]
   },
+
   qassim: {
     name: "القصيم",
     emoji: "🌾",
@@ -180,6 +193,7 @@ const regions = {
       "الرس"
     ]
   },
+
   north: {
     name: "الشمال",
     emoji: "🏔️",
@@ -193,6 +207,7 @@ const regions = {
       "القريات"
     ]
   },
+
   all: {
     name: "كل المناطق",
     emoji: "📩",
@@ -211,20 +226,38 @@ function readCompanies() {
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
 
-  const rows = XLSX.utils.sheet_to_json(worksheet, {
-    defval: ""
-  });
+  const rows = XLSX.utils.sheet_to_json(
+    worksheet,
+    {
+      defval: ""
+    }
+  );
 
-return rows
-  .map((row) => ({
-    email: String(row.Email || "").trim(),
-    city: String(row.City || "").trim(),
-    company: String(row.Company || "").trim(),
-    jobTitle: String(row["المسمى الوظيفي"] || "").trim(),
-    addedDate: String(row["تاريخ الإضافة"] || "").trim()
-  }))
+  return rows
+    .map((row) => ({
+      email: String(
+        row.Email || ""
+      ).trim(),
+
+      city: String(
+        row.City || ""
+      ).trim(),
+
+      company: String(
+        row.Company || ""
+      ).trim(),
+
+      jobTitle: String(
+        row["المسمى الوظيفي"] || ""
+      ).trim(),
+
+      addedDate: String(
+        row["تاريخ الإضافة"] || ""
+      ).trim()
+    }))
     .filter((row) => row.email);
 }
+
   function getAllCompanyNames() {
   const companies = readCompanies();
 
@@ -258,25 +291,25 @@ function getCompaniesByRegion(regionId) {
 }
 
 function formatCompany(company, number) {
-  const parts = [`${number}. 🏢 ${company.company || "شركة غير محددة"}`];
+  const parts = [`${number}. ًںڈ¢ ${company.company || "ط´ط±ظƒط© ط؛ظٹط± ظ…ط­ط¯ط¯ط©"}`];
 
   if (company.email) {
-    parts.push(`📧 ${company.email}`);
+    parts.push(`ًں“§ ${company.email}`);
   }
 
   if (company.city) {
-    parts.push(`📍 ${company.city}`);
+    parts.push(`ًں“چ ${company.city}`);
   }
 
   if (company.jobTitle) {
-    parts.push(`💼 ${company.jobTitle}`);
+    parts.push(`ًں’¼ ${company.jobTitle}`);
   }
 
   return parts.join("\n");
 }
 
 /**
- * يقسم القائمة إلى رسائل لا تتجاوز حد تيليجرام.
+ * ظٹظ‚ط³ظ… ط§ظ„ظ‚ط§ط¦ظ…ط© ط¥ظ„ظ‰ ط±ط³ط§ط¦ظ„ ظ„ط§ طھطھط¬ط§ظˆط² ط­ط¯ طھظٹظ„ظٹط¬ط±ط§ظ….
  */
 function createTelegramMessages(companies, startingNumber) {
   const messages = [];
@@ -289,7 +322,7 @@ function createTelegramMessages(companies, startingNumber) {
     );
 
     const separator = currentMessage
-      ? "\n\n━━━━━━━━━━━━━━\n\n"
+      ? "\n\nâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ\n\n"
       : "";
 
     if (
@@ -325,7 +358,7 @@ async function sendCompaniesNamesPage(
 
   if (!page.length) {
     return ctx.reply(
-      "❌ لا توجد شركات مسجلة."
+      "â‌Œ ظ„ط§ طھظˆط¬ط¯ ط´ط±ظƒط§طھ ظ…ط³ط¬ظ„ط©."
     );
   }
 
@@ -341,7 +374,7 @@ async function sendCompaniesNamesPage(
   if (offset + pageSize < companyNames.length) {
     buttons.push([
       Markup.button.callback(
-        "➡️ الشركات التالية",
+        "â‍،ï¸ڈ ط§ظ„ط´ط±ظƒط§طھ ط§ظ„طھط§ظ„ظٹط©",
         `big_companies_page:${offset + pageSize}`
       )
     ]);
@@ -350,7 +383,7 @@ async function sendCompaniesNamesPage(
   if (offset > 0) {
     buttons.push([
       Markup.button.callback(
-        "⬅️ الشركات السابقة",
+        "â¬…ï¸ڈ ط§ظ„ط´ط±ظƒط§طھ ط§ظ„ط³ط§ط¨ظ‚ط©",
         `big_companies_page:${Math.max(
           0,
           offset - pageSize
@@ -361,16 +394,16 @@ async function sendCompaniesNamesPage(
 
   buttons.push([
     Markup.button.callback(
-      "🔙 رجوع",
+      "ًں”™ ط±ط¬ظˆط¹",
       "company_emails"
     )
   ]);
 
   return ctx.reply(
-    `🏢 الشركات المسجلة
+    `ًںڈ¢ ط§ظ„ط´ط±ظƒط§طھ ط§ظ„ظ…ط³ط¬ظ„ط©
 
-📊 الإجمالي: ${companyNames.length}
-📄 عرض ${offset + 1} إلى ${
+ًں“ٹ ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${companyNames.length}
+ًں“„ ط¹ط±ط¶ ${offset + 1} ط¥ظ„ظ‰ ${
       offset + page.length
     }`,
     Markup.inlineKeyboard(buttons)
@@ -381,7 +414,7 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
   const region = regions[regionId];
 
   if (!region) {
-    return ctx.reply("❌ المنطقة غير صحيحة.");
+    return ctx.reply("â‌Œ ط§ظ„ظ…ظ†ط·ظ‚ط© ط؛ظٹط± طµط­ظٹط­ط©.");
   }
 
   const companies = getCompaniesByRegion(regionId);
@@ -389,12 +422,12 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
 
   if (companies.length === 0) {
     return ctx.reply(
-      `لا توجد إيميلات مسجلة حاليًا في ${region.name}.`
+      `ظ„ط§ طھظˆط¬ط¯ ط¥ظٹظ…ظٹظ„ط§طھ ظ…ط³ط¬ظ„ط© ط­ط§ظ„ظٹظ‹ط§ ظپظٹ ${region.name}.`
     );
   }
 
   if (page.length === 0) {
-    return ctx.reply("✅ وصلتِ إلى نهاية القائمة.");
+    return ctx.reply("âœ… ظˆطµظ„طھظگ ط¥ظ„ظ‰ ظ†ظ‡ط§ظٹط© ط§ظ„ظ‚ط§ط¦ظ…ط©.");
   }
 
   const from = offset + 1;
@@ -402,8 +435,8 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
 
   await ctx.reply(
     `${region.emoji} <b>${region.name}</b>\n` +
-      `📧 الإيميلات من ${from} إلى ${to}\n` +
-      `📊 الإجمالي: ${companies.length}`,
+      `ًں“§ ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ظ…ظ† ${from} ط¥ظ„ظ‰ ${to}\n` +
+      `ًں“ٹ ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${companies.length}`,
     {
       parse_mode: "HTML"
     }
@@ -420,7 +453,7 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
   if (offset + PAGE_SIZE < companies.length) {
     buttons.push([
       Markup.button.callback(
-        "➡️ التالي 50",
+        "â‍،ï¸ڈ ط§ظ„طھط§ظ„ظٹ 50",
         `emails_page:${regionId}:${offset + PAGE_SIZE}`
       )
     ]);
@@ -429,7 +462,7 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
   if (offset > 0) {
     buttons.push([
       Markup.button.callback(
-        "⬅️ السابق 50",
+        "â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚ 50",
         `emails_page:${regionId}:${Math.max(
           0,
           offset - PAGE_SIZE
@@ -440,26 +473,26 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
 
   buttons.push([
     Markup.button.callback(
-      "📥 تحميل القائمة كاملة",
+      "ًں“¥ طھط­ظ…ظٹظ„ ط§ظ„ظ‚ط§ط¦ظ…ط© ظƒط§ظ…ظ„ط©",
       `emails_download:${regionId}`
     )
   ]);
 
   buttons.push([
     Markup.button.callback(
-      "🔙 المناطق",
+      "ًں”™ ط§ظ„ظ…ظ†ط§ط·ظ‚",
       "company_emails"
     ),
     Markup.button.callback(
-      "🏠 الرئيسية",
+      "ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©",
       "back_to_menu"
     )
   ]);
 
   return ctx.reply(
     offset + PAGE_SIZE < companies.length
-      ? `✅ تم إرسال ${page.length} إيميل.`
-      : "✅ تم إرسال آخر دفعة من الإيميلات.",
+      ? `âœ… طھظ… ط¥ط±ط³ط§ظ„ ${page.length} ط¥ظٹظ…ظٹظ„.`
+      : "âœ… طھظ… ط¥ط±ط³ط§ظ„ ط¢ط®ط± ط¯ظپط¹ط© ظ…ظ† ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ.",
     Markup.inlineKeyboard(buttons)
   );
 }
@@ -472,7 +505,7 @@ function createRegionExcel(regionId) {
     Email: company.email,
     City: company.city,
     Company: company.company,
-    "المسمى الوظيفي": company.jobTitle
+    "ط§ظ„ظ…ط³ظ…ظ‰ ط§ظ„ظˆط¸ظٹظپظٹ": company.jobTitle
   }));
 
   const workbook = XLSX.utils.book_new();
@@ -522,9 +555,9 @@ function normalizeSearchText(text = "") {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u064B-\u065F\u0670]/g, "")
-    .replace(/[أإآ]/g, "ا")
-    .replace(/ة/g, "ه")
-    .replace(/ى/g, "ي")
+    .replace(/[ط£ط¥ط¢]/g, "ط§")
+    .replace(/ط©/g, "ظ‡")
+    .replace(/ظ‰/g, "ظٹ")
     .replace(/\s+/g, " ");
 }
 
@@ -548,7 +581,7 @@ export function searchCompaniesByJobTitle(query) {
       return false;
     }
 
-    // يطابق النص كاملًا أو جميع الكلمات التي كتبها المستخدم
+    // ظٹط·ط§ط¨ظ‚ ط§ظ„ظ†طµ ظƒط§ظ…ظ„ظ‹ط§ ط£ظˆ ط¬ظ…ظٹط¹ ط§ظ„ظƒظ„ظ…ط§طھ ط§ظ„طھظٹ ظƒطھط¨ظ‡ط§ ط§ظ„ظ…ط³طھط®ط¯ظ…
     return (
       normalizedTitle.includes(normalizedQuery) ||
       queryWords.every((word) =>
@@ -557,7 +590,7 @@ export function searchCompaniesByJobTitle(query) {
     );
   });
 
-  // حذف النتائج المكررة
+  // ط­ط°ظپ ط§ظ„ظ†طھط§ط¦ط¬ ط§ظ„ظ…ظƒط±ط±ط©
   return results.filter(
     (company, index, self) =>
       index ===
@@ -600,7 +633,7 @@ async function sendEmailSearchPage(ctx, sessions) {
   const session = sessions.get(ctx.from.id);
 
   if (!session?.emailSearchResults?.length) {
-    return ctx.reply("❌ انتهت جلسة البحث.");
+    return ctx.reply("â‌Œ ط§ظ†طھظ‡طھ ط¬ظ„ط³ط© ط§ظ„ط¨ط­ط«.");
   }
 
   const offset = session.emailSearchOffset || 0;
@@ -614,10 +647,10 @@ async function sendEmailSearchPage(ctx, sessions) {
   );
 
   await ctx.reply(
-    `🔍 نتائج البحث عن: ${session.emailSearchQuery}
+    `ًں”چ ظ†طھط§ط¦ط¬ ط§ظ„ط¨ط­ط« ط¹ظ†: ${session.emailSearchQuery}
 
-📄 النتائج ${offset + 1} - ${offset + page.length}
-📊 إجمالي النتائج: ${results.length}`
+ًں“„ ط§ظ„ظ†طھط§ط¦ط¬ ${offset + 1} - ${offset + page.length}
+ًں“ٹ ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ†طھط§ط¦ط¬: ${results.length}`
   );
 
   for (const message of messages) {
@@ -629,10 +662,10 @@ async function sendEmailSearchPage(ctx, sessions) {
   if (offset + PAGE_SIZE < results.length) {
     keyboard.push([
       Markup.button.callback(
-        `📩 عرض ${Math.min(
+        `ًں“© ط¹ط±ط¶ ${Math.min(
           PAGE_SIZE,
           results.length - (offset + PAGE_SIZE)
-        )} نتيجة التالية`,
+        )} ظ†طھظٹط¬ط© ط§ظ„طھط§ظ„ظٹط©`,
         "emails_search_next"
       )
     ]);
@@ -641,7 +674,7 @@ async function sendEmailSearchPage(ctx, sessions) {
   if (offset > 0) {
     keyboard.push([
       Markup.button.callback(
-        "⬅️ النتائج السابقة",
+        "â¬…ï¸ڈ ط§ظ„ظ†طھط§ط¦ط¬ ط§ظ„ط³ط§ط¨ظ‚ط©",
         "emails_search_previous"
       )
     ]);
@@ -649,55 +682,118 @@ async function sendEmailSearchPage(ctx, sessions) {
 
   keyboard.push([
     Markup.button.callback(
-      "🔍 بحث جديد",
+      "ًں”چ ط¨ط­ط« ط¬ط¯ظٹط¯",
       "emails_search_title"
     )
   ]);
 
   return ctx.reply(
-    "اختر:",
+    "ط§ط®طھط±:",
     Markup.inlineKeyboard(keyboard)
   );
 }
+function activatePaidEmailAccess(userId, days, payment) {
+  const data = db();
+
+  data.users = data.users || {};
+
+  const id = String(userId);
+
+  data.users[id] = data.users[id] || {
+    id
+  };
+
+  const user = data.users[id];
+  const now = new Date();
+
+  const currentExpiry = user.subscriptionExpiresAt
+    ? new Date(user.subscriptionExpiresAt)
+    : now;
+
+  const expiresAt =
+    currentExpiry > now
+      ? new Date(currentExpiry)
+      : new Date(now);
+
+  expiresAt.setDate(
+    expiresAt.getDate() + days
+  );
+
+  user.subscriptionActive = true;
+  user.subscriptionType = "telegram_stars";
+  user.subscriptionExpiresAt =
+    expiresAt.toISOString();
+
+  user.telegramPaymentChargeId =
+    payment.telegram_payment_charge_id;
+
+  user.lastPaymentStars =
+    payment.total_amount;
+
+  save(data);
+
+  return expiresAt;
+}
 
 export function registerCompanyEmails(bot, sessions) {
-    bot.action("company_emails", async (ctx) => {
-    await ctx.answerCbQuery();
-    if (!hasEmailAccess(ctx.from.id)) {
-  return ctx.reply(
-    `🔐 اختر طريقة الدخول إلى إيميلات الشركات:
 
-⭐ شهر واحد — 250 نجمة
-🔥 شهران — 350 نجمة
-🎟️ لدي كود دخول`,
-    Markup.inlineKeyboard([
-      [
-        Markup.button.callback(
-          "⭐ شهر — 250",
-          "email_sub_30"
-        )
-      ],
-      [
-        Markup.button.callback(
-          "🔥 شهران — 350",
-          "email_sub_60"
-        )
-      ],
-      [
-        Markup.button.callback(
-          "🎟️ لدي كود دخول",
-          "email_access_code"
-        )
-      ],
-      [
-        Markup.button.callback(
-          "🏠 الرئيسية",
-          "back_to_menu"
-        )
-      ]
-    ])
+bot.on("pre_checkout_query", async (ctx) => {
+  try {
+    await ctx.answerPreCheckoutQuery(true);
+  } catch (error) {
+    console.error("Pre-checkout error:", error);
+  }
+});
+
+bot.action("email_sub_30", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  return ctx.replyWithInvoice({
+    title: "Sir AI - ط§ط´طھط±ط§ظƒ ط´ظ‡ط±",
+    description: "ظˆطµظˆظ„ ظƒط§ظ…ظ„ ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظ„ظ…ط¯ط© 30 ظٹظˆظ…",
+    payload: `email_subscription_30:${ctx.from.id}`,
+    currency: "XTR",
+    prices: [
+      {
+        label: "ط§ط´طھط±ط§ظƒ ط´ظ‡ط±",
+        amount: 250
+      }
+    ]
+  });
+});
+
+bot.action("email_sub_60", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  return ctx.replyWithInvoice({
+    title: "Sir AI - ط§ط´طھط±ط§ظƒ ط´ظ‡ط±ظٹظ†",
+    description: "ظˆطµظˆظ„ ظƒط§ظ…ظ„ ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظ„ظ…ط¯ط© 60 ظٹظˆظ…",
+    payload: `email_subscription_60:${ctx.from.id}`,
+    currency: "XTR",
+    prices: [
+      {
+        label: "ط§ط´طھط±ط§ظƒ ط´ظ‡ط±ظٹظ†",
+        amount: 350
+      }
+    ]
+  });
+});
+
+bot.action("email_access_code", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const session =
+    sessions.get(ctx.from.id) || {};
+
+  session.step = "waiting_email_access_code";
+
+  sessions.set(ctx.from.id, session);
+
+  return ctx.reply(
+    "ًںژںï¸ڈ ط£ط±ط³ظ„ ظƒظˆط¯ ط§ظ„ط¯ط®ظˆظ„:"
   );
-}
+});
+
 bot.on("successful_payment", async (ctx) => {
   const payment =
     ctx.message.successful_payment;
@@ -711,11 +807,19 @@ bot.on("successful_payment", async (ctx) => {
 
   let days = 0;
 
-  if (payload.startsWith("email_subscription_30:")) {
+  if (
+    payload.startsWith(
+      "email_subscription_30:"
+    )
+  ) {
     days = 30;
   }
 
-  if (payload.startsWith("email_subscription_60:")) {
+  if (
+    payload.startsWith(
+      "email_subscription_60:"
+    )
+  ) {
     days = 60;
   }
 
@@ -731,282 +835,134 @@ bot.on("successful_payment", async (ctx) => {
     );
 
   return ctx.reply(
-    `✅ تم تفعيل اشتراكك بنجاح
+    `âœ… طھظ… طھظپط¹ظٹظ„ ط§ط´طھط±ط§ظƒظƒ ط¨ظ†ط¬ط§ط­
 
-⭐ تم الدفع: ${payment.total_amount} نجمة
-⏳ مدة الاشتراك: ${days} يوم
-📅 ينتهي الاشتراك: ${expiresAt.toLocaleDateString("ar-SA")}
+â­گ طھظ… ط§ظ„ط¯ظپط¹: ${payment.total_amount} ظ†ط¬ظ…ط©
+âڈ³ ظ…ط¯ط© ط§ظ„ط§ط´طھط±ط§ظƒ: ${days} ظٹظˆظ…
+ًں“… ظٹظ†طھظ‡ظٹ ط§ظ„ط§ط´طھط±ط§ظƒ: ${expiresAt.toLocaleDateString("ar-SA")}
 
-📧 تم فتح إيميلات الشركات لك.`,
+ًں“§ طھظ… ظپطھط­ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظ„ظƒ.`,
     Markup.inlineKeyboard([
       [
         Markup.button.callback(
-          "📧 فتح إيميلات الشركات",
+          "ًں“§ ظپطھط­ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ",
           "company_emails"
         )
       ]
     ])
   );
 });
-bot.action("email_sub_30", async (ctx) => {
+
+
+
+bot.action("company_emails", async (ctx) => {
   await ctx.answerCbQuery();
 
-  return ctx.replyWithInvoice({
-    title: "Sir AI - اشتراك شهر",
-    description: "وصول كامل لإيميلات الشركات لمدة 30 يوم",
-    payload: `email_subscription_30:${ctx.from.id}`,
-    currency: "XTR",
-    prices: [
-      {
-        label: "اشتراك شهر",
-        amount: 250
-      }
-    ]
-  });
-});
-
-bot.action("email_sub_60", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  return ctx.replyWithInvoice({
-    title: "Sir AI - اشتراك شهرين",
-    description: "وصول كامل لإيميلات الشركات لمدة 60 يوم",
-    payload: `email_subscription_60:${ctx.from.id}`,
-    currency: "XTR",
-    prices: [
-      {
-        label: "اشتراك شهرين",
-        amount: 350
-      }
-    ]
-  });
-});
-
-bot.action("email_access_code", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  const session = sessions.get(ctx.from.id) || {};
-
-  session.step = "waiting_email_access_code";
-  sessions.set(ctx.from.id, session);
-
-  return ctx.reply("🎟️ أرسل كود الدخول:");
-});
-
-function activatePaidEmailAccess(
-  userId,
-  days,
-  payment
-) {
-  const data = db();
-
-  data.users = data.users || {};
-
-  const id = String(userId);
-
-  data.users[id] = data.users[id] || {
-    id
-  };
-
-  const now = new Date();
-
-  const currentExpiry =
-    data.users[id].subscriptionExpiresAt
-      ? new Date(data.users[id].subscriptionExpiresAt)
-      : now;
-
-  const startDate =
-    currentExpiry > now
-      ? currentExpiry
-      : now;
-
-  startDate.setDate(
-    startDate.getDate() + days
-  );
-
-  data.users[id].subscriptionActive = true;
-  data.users[id].subscriptionType = "telegram_stars";
-  data.users[id].subscriptionExpiresAt =
-    startDate.toISOString();
-
-  data.users[id].telegramPaymentChargeId =
-    payment.telegram_payment_charge_id;
-
-  data.users[id].lastPaymentStars =
-    payment.total_amount;
-
-  save(data);
-
-  return startDate;
-}
-function activatePaidEmailAccess(
-  userId,
-  days,
-  payment
-) {
-  const data = db();
-
-  data.users = data.users || {};
-
-  const id = String(userId);
-
-  data.users[id] = data.users[id] || {
-    id
-  };
-
-  const now = new Date();
-
-  const currentExpiry =
-    data.users[id].subscriptionExpiresAt
-      ? new Date(data.users[id].subscriptionExpiresAt)
-      : now;
-
-  const startDate =
-    currentExpiry > now
-      ? currentExpiry
-      : now;
-
-  startDate.setDate(
-    startDate.getDate() + days
-  );
-
-  data.users[id].subscriptionActive = true;
-  data.users[id].subscriptionType = "telegram_stars";
-  data.users[id].subscriptionExpiresAt =
-    startDate.toISOString();
-
-  data.users[id].telegramPaymentChargeId =
-    payment.telegram_payment_charge_id;
-
-  data.users[id].lastPaymentStars =
-    payment.total_amount;
-
-  save(data);
-
-  return startDate;
-}
-bot.on("pre_checkout_query", async (ctx) => {
-  try {
-    await ctx.answerPreCheckoutQuery(true);
-  } catch (error) {
-    console.error("Pre-checkout error:", error);
-  }
-});
-bot.action("email_sub_30", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  return ctx.replyWithInvoice({
-    title: "Sir AI - اشتراك شهر",
-    description: "وصول كامل لإيميلات الشركات لمدة 30 يوم",
-    payload: `email_subscription_30:${ctx.from.id}`,
-    currency: "XTR",
-    prices: [
-      {
-        label: "اشتراك شهر",
-        amount: 250
-      }
-    ]
-  });
-});
-
-bot.action("email_sub_60", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  return ctx.replyWithInvoice({
-    title: "Sir AI - اشتراك شهرين",
-    description: "وصول كامل لإيميلات الشركات لمدة 60 يوم",
-    payload: `email_subscription_60:${ctx.from.id}`,
-    currency: "XTR",
-    prices: [
-      {
-        label: "اشتراك شهرين",
-        amount: 350
-      }
-    ]
-  });
-});
-
-bot.action("email_access_code", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  const session = sessions.get(ctx.from.id) || {};
-
-  session.step = "waiting_email_access_code";
-
-  sessions.set(ctx.from.id, session);
-
-  return ctx.reply(
-    "🎟️ أرسل كود الدخول:"
-  );
-});
-
-
+  if (!hasEmailAccess(ctx.from.id)) {
     return ctx.reply(
-      "📧 اختر المنطقة التي تريد إيميلات الشركات فيها:",
-      Markup.inlineKeyboard([
-      [ Markup.button.callback(
-  "🏢 إيميلات الشركات الكبيرة",
-"emails_region:bigCompanies"
-)
-],
-        [
-  Markup.button.callback(
-    "🔍 البحث بالمسمى الوظيفي",
-    "emails_search_title"
-  )
-],
-[
-  Markup.button.callback(
-    "🆕 الإيميلات الحديثة",
-    "recent_emails"
-  )
-],
+      `ًں”گ ط§ط®طھط± ط·ط±ظٹظ‚ط© ط§ظ„ط¯ط®ظˆظ„ ط¥ظ„ظ‰ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ:
 
+â­گ ط´ظ‡ط± ظˆط§ط­ط¯ â€” 250 ظ†ط¬ظ…ط©
+ًں”¥ ط´ظ‡ط±ط§ظ† â€” 350 ظ†ط¬ظ…ط©
+ًںژںï¸ڈ ظ„ط¯ظٹ ظƒظˆط¯ ط¯ط®ظˆظ„`,
+      Markup.inlineKeyboard([
         [
           Markup.button.callback(
-            "📍 الرياض",
-            "emails_region:riyadh"
-          ),
-          Markup.button.callback(
-            "🌊 الشرقية",
-            "emails_region:eastern"
+            "â­گ ط´ظ‡ط± â€” 250",
+            "email_sub_30"
           )
         ],
         [
           Markup.button.callback(
-            "🌴 الغربية",
-            "emails_region:western"
-          ),
-          Markup.button.callback(
-            "⛰️ الجنوب",
-            "emails_region:south"
+            "ًں”¥ ط´ظ‡ط±ط§ظ† â€” 350",
+            "email_sub_60"
           )
         ],
         [
           Markup.button.callback(
-            "🌾 القصيم",
-            "emails_region:qassim"
-          ),
-          Markup.button.callback(
-            "🏔️ الشمال",
-            "emails_region:north"
+            "ًںژںï¸ڈ ظ„ط¯ظٹ ظƒظˆط¯ ط¯ط®ظˆظ„",
+            "email_access_code"
           )
         ],
         [
           Markup.button.callback(
-            "📩 كل الإيميلات",
-            "emails_region:all"
-          )
-        ],
-        [
-          Markup.button.callback(
-            "🏠 القائمة الرئيسية",
+            "ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©",
             "back_to_menu"
           )
         ]
       ])
     );
-  });
+  }
+
+  return ctx.reply(
+    "ًں“§ ط§ط®طھط± ط§ظ„ظ…ظ†ط·ظ‚ط© ط§ظ„طھظٹ طھط±ظٹط¯ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظپظٹظ‡ط§:",
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          "ًںڈ¢ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ط§ظ„ظƒط¨ظٹط±ط©",
+          "emails_region:bigCompanies"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "ًں”چ ط§ظ„ط¨ط­ط« ط¨ط§ظ„ظ…ط³ظ…ظ‰ ط§ظ„ظˆط¸ظٹظپظٹ",
+          "emails_search_title"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "ًں†• ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط­ط¯ظٹط«ط©",
+          "recent_emails"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "ًں“چ ط§ظ„ط±ظٹط§ط¶",
+          "emails_region:riyadh"
+        ),
+        Markup.button.callback(
+          "ًںŒٹ ط§ظ„ط´ط±ظ‚ظٹط©",
+          "emails_region:eastern"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "ًںŒ´ ط§ظ„ط؛ط±ط¨ظٹط©",
+          "emails_region:western"
+        ),
+        Markup.button.callback(
+          "â›°ï¸ڈ ط§ظ„ط¬ظ†ظˆط¨",
+          "emails_region:south"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "ًںŒ¾ ط§ظ„ظ‚طµظٹظ…",
+          "emails_region:qassim"
+        ),
+        Markup.button.callback(
+          "ًںڈ”ï¸ڈ ط§ظ„ط´ظ…ط§ظ„",
+          "emails_region:north"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "ًں“© ظƒظ„ ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ",
+          "emails_region:all"
+        )
+      ],
+      [
+        Markup.button.callback(
+          "ًںڈ  ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©",
+          "back_to_menu"
+        )
+      ]
+    ])
+  );
+});
+
+  // ط¨ط¹ط¯ ظƒظ„ ظ…ط§ ط³ط¨ظ‚ ظٹط¨ط¯ط£ ظ‡ط°ط§
+       
   bot.action("recent_emails", async (ctx) => {
   await ctx.answerCbQuery();
 
@@ -1014,7 +970,7 @@ bot.action("email_access_code", async (ctx) => {
 
   if (!results.length) {
     return ctx.reply(
-      "📭 لا توجد إيميلات حديثة حاليًا."
+      "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط¥ظٹظ…ظٹظ„ط§طھ ط­ط¯ظٹط«ط© ط­ط§ظ„ظٹظ‹ط§."
     );
   }
 
@@ -1028,7 +984,7 @@ bot.action("email_access_code", async (ctx) => {
     step: "emails_search_results",
     emailSearchResults: latestResults,
     emailSearchOffset: 0,
-    emailSearchQuery: `الإيميلات المضافة بتاريخ ${latestDate}`
+    emailSearchQuery: `ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ظ…ط¶ط§ظپط© ط¨طھط§ط±ظٹط® ${latestDate}`
   });
 if (session?.step === "waiting_email_access_code") {
   const code = ctx.message.text
@@ -1039,7 +995,7 @@ const duration = ACCESS_CODES[code];
 
 if (!duration) {
       return ctx.reply(
-      "❌ الكود غير صحيح. حاولي مرة أخرى."
+      "â‌Œ ط§ظ„ظƒظˆط¯ ط؛ظٹط± طµط­ظٹط­. ط­ط§ظˆظ„ظٹ ظ…ط±ط© ط£ط®ط±ظ‰."
     );
   }
 
@@ -1051,7 +1007,7 @@ const result = activateEmailAccessByCode(
 
 if (result?.error === "TRIAL_ALREADY_USED") {
   return ctx.reply(
-    "❌ تم استخدام كود التجربة المجانية لهذا الحساب مسبقًا."
+    "â‌Œ طھظ… ط§ط³طھط®ط¯ط§ظ… ظƒظˆط¯ ط§ظ„طھط¬ط±ط¨ط© ط§ظ„ظ…ط¬ط§ظ†ظٹط© ظ„ظ‡ط°ط§ ط§ظ„ط­ط³ط§ط¨ ظ…ط³ط¨ظ‚ظ‹ط§."
   );
 }
 
@@ -1060,17 +1016,17 @@ const expiresAt = result.expiresAt;
   sessions.delete(ctx.from.id);
 
   return ctx.reply(
-    `✅ تم تفعيل الدخول المجاني
+    `âœ… طھظ… طھظپط¹ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ظ…ط¬ط§ظ†ظٹ
 
-🎟️ الكود: ${code}
-⏳ المدة: ${duration.label}
-📅 ينتهي: ${expiresAt.toLocaleDateString("ar-SA")}
+ًںژںï¸ڈ ط§ظ„ظƒظˆط¯: ${code}
+âڈ³ ط§ظ„ظ…ط¯ط©: ${duration.label}
+ًں“… ظٹظ†طھظ‡ظٹ: ${expiresAt.toLocaleDateString("ar-SA")}
 
-📧 تم فتح إيميلات الشركات لك.`,
+ًں“§ طھظ… ظپطھط­ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظ„ظƒ.`,
     Markup.inlineKeyboard([
       [
         Markup.button.callback(
-          "📧 فتح إيميلات الشركات",
+          "ًں“§ ظپطھط­ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ",
           "company_emails"
         )
       ]
@@ -1119,7 +1075,7 @@ bot.action(
 
     if (!companyName) {
       return ctx.reply(
-        "❌ لم يتم العثور على الشركة."
+        "â‌Œ ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط§ظ„ط´ط±ظƒط©."
       );
     }
 
@@ -1130,25 +1086,25 @@ bot.action(
 
     if (!results.length) {
       return ctx.reply(
-        "❌ لا توجد بيانات لهذه الشركة."
+        "â‌Œ ظ„ط§ طھظˆط¬ط¯ ط¨ظٹط§ظ†ط§طھ ظ„ظ‡ط°ظ‡ ط§ظ„ط´ط±ظƒط©."
       );
     }
 
-    let text = `🏢 ${companyName}\n\n`;
+    let text = `ًںڈ¢ ${companyName}\n\n`;
 
     results.forEach((item, index) => {
       text += `${index + 1}.\n`;
 
       if (item.email) {
-        text += `📧 ${item.email}\n`;
+        text += `ًں“§ ${item.email}\n`;
       }
 
       if (item.city) {
-        text += `📍 ${item.city}\n`;
+        text += `ًں“چ ${item.city}\n`;
       }
 
       if (item.jobTitle) {
-        text += `💼 ${item.jobTitle}\n`;
+        text += `ًں’¼ ${item.jobTitle}\n`;
       }
 
       text += "\n";
@@ -1159,19 +1115,19 @@ bot.action(
       Markup.inlineKeyboard([
         [
           Markup.button.callback(
-            "🔙 كل الشركات",
+            "ًں”™ ظƒظ„ ط§ظ„ط´ط±ظƒط§طھ",
             "big_companies"
           )
         ],
         [
   Markup.button.callback(
-    "🆕 الإيميلات الحديثة",
+    "ًں†• ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط­ط¯ظٹط«ط©",
     "recent_emails"
   )
 ],
         [
           Markup.button.callback(
-            "🏠 الرئيسية",
+            "ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©",
             "back_to_menu"
           )
         ]
@@ -1183,7 +1139,7 @@ bot.action(
   bot.action("big_companies", async (ctx) => {
   await ctx.answerCbQuery();
 
-  // عرض قائمة الشركات الكبيرة
+  // ط¹ط±ط¶ ظ‚ط§ط¦ظ…ط© ط§ظ„ط´ط±ظƒط§طھ ط§ظ„ظƒط¨ظٹط±ط©
 });
 
   bot.action("emails_search_next", async (ctx) => {
@@ -1192,7 +1148,7 @@ bot.action(
   const session = sessions.get(ctx.from.id);
 
   if (!session?.emailSearchResults) {
-    return ctx.reply("❌ انتهت جلسة البحث. ابدئي بحثًا جديدًا.");
+    return ctx.reply("â‌Œ ط§ظ†طھظ‡طھ ط¬ظ„ط³ط© ط§ظ„ط¨ط­ط«. ط§ط¨ط¯ط¦ظٹ ط¨ط­ط«ظ‹ط§ ط¬ط¯ظٹط¯ظ‹ط§.");
   }
 
   session.emailSearchOffset =
@@ -1209,7 +1165,7 @@ bot.action("emails_search_previous", async (ctx) => {
   const session = sessions.get(ctx.from.id);
 
   if (!session?.emailSearchResults) {
-    return ctx.reply("❌ انتهت جلسة البحث. ابدئي بحثًا جديدًا.");
+    return ctx.reply("â‌Œ ط§ظ†طھظ‡طھ ط¬ظ„ط³ط© ط§ظ„ط¨ط­ط«. ط§ط¨ط¯ط¦ظٹ ط¨ط­ط«ظ‹ط§ ط¬ط¯ظٹط¯ظ‹ط§.");
   }
 
   session.emailSearchOffset = Math.max(
@@ -1221,21 +1177,88 @@ bot.action("emails_search_previous", async (ctx) => {
 
   return sendEmailSearchPage(ctx, sessions);
 });
-
 bot.on("text", async (ctx, next) => {
   const session = sessions.get(ctx.from.id);
 
+  // =========================
+  // إدخال كود الاشتراك
+  // =========================
+  if (session?.step === "waiting_email_access_code") {
+    const code = ctx.message.text
+      .trim()
+      .toUpperCase();
+
+    const duration = ACCESS_CODES[code];
+
+    if (!duration) {
+      return ctx.reply(
+        "❌ الكود غير صحيح. حاول مرة أخرى."
+      );
+    }
+
+    const result = activateEmailAccessByCode(
+      ctx.from.id,
+      code,
+      duration
+    );
+
+    if (result?.error === "CODE_ALREADY_USED") {
+      return ctx.reply(
+        "❌ سبق استخدام هذا الكود على هذا الحساب."
+      );
+    }
+
+    const expiresAt = result.expiresAt;
+
+    sessions.delete(ctx.from.id);
+
+    return ctx.reply(
+      `✅ تم تفعيل الدخول المجاني
+
+🎟️ الكود: ${code}
+⏳ المدة: ${duration.label}
+📅 ينتهي: ${expiresAt.toLocaleString("ar-SA")}
+
+📧 تم فتح إيميلات الشركات لك.`,
+      Markup.inlineKeyboard([
+        [
+          Markup.button.callback(
+            "📧 فتح إيميلات الشركات",
+            "company_emails"
+          )
+        ]
+      ])
+    );
+  }
+
+  // =========================
+  // البحث بالمسمى الوظيفي
+  // =========================
   if (session?.step !== "emails_search_title") {
     return next();
   }
 
   const query = ctx.message.text.trim();
 
+  if (query.length < 2) {
+    return ctx.reply(
+      "❌ اكتب حرفين على الأقل من المسمى الوظيفي."
+    );
+  }
+
   const results =
     searchCompaniesByJobTitle(query);
 
   if (!results.length) {
-    return ctx.reply("❌ لا توجد نتائج.");
+    return ctx.reply(
+      `❌ لم أجد نتائج تحتوي على: ${query}
+
+جرّب كتابة جزء أقصر من المسمى، مثل:
+موارد بشرية
+محاسب
+مهندس
+خدمة عملاء`
+    );
   }
 
   sessions.set(ctx.from.id, {
@@ -1245,9 +1268,11 @@ bot.on("text", async (ctx, next) => {
     emailSearchQuery: query
   });
 
-  return sendEmailSearchPage(ctx, sessions);
+  return sendEmailSearchPage(
+    ctx,
+    sessions
+  );
 });
-
 bot.action("emails_search_title", async (ctx) => {
   await ctx.answerCbQuery();
 
@@ -1256,16 +1281,16 @@ bot.action("emails_search_title", async (ctx) => {
   });
 
   return ctx.reply(
-    `🔍 اكتب المسمى الوظيفي أو جزءًا منه.
+    `ًں”چ ط§ظƒطھط¨ ط§ظ„ظ…ط³ظ…ظ‰ ط§ظ„ظˆط¸ظٹظپظٹ ط£ظˆ ط¬ط²ط،ظ‹ط§ ظ…ظ†ظ‡.
 
-أمثلة:
-• موارد بشرية
-• محاسب
-• مهندس
-• خدمة عملاء
-• قانون
+ط£ظ…ط«ظ„ط©:
+â€¢ ظ…ظˆط§ط±ط¯ ط¨ط´ط±ظٹط©
+â€¢ ظ…ط­ط§ط³ط¨
+â€¢ ظ…ظ‡ظ†ط¯ط³
+â€¢ ط®ط¯ظ…ط© ط¹ظ…ظ„ط§ط،
+â€¢ ظ‚ط§ظ†ظˆظ†
 
-سيتم البحث داخل جميع المسميات الموجودة في ملف Excel.`
+ط³ظٹطھظ… ط§ظ„ط¨ط­ط« ط¯ط§ط®ظ„ ط¬ظ…ظٹط¹ ط§ظ„ظ…ط³ظ…ظٹط§طھ ط§ظ„ظ…ظˆط¬ظˆط¯ط© ظپظٹ ظ…ظ„ظپ Excel.`
   );
 });
 
@@ -1276,33 +1301,33 @@ bot.action("emails_search_title", async (ctx) => {
     const region = regions[regionId];
 
     if (!region) {
-      return ctx.reply("❌ المنطقة غير صحيحة.");
+      return ctx.reply("â‌Œ ط§ظ„ظ…ظ†ط·ظ‚ط© ط؛ظٹط± طµط­ظٹط­ط©.");
     }
 
     const count = getCompaniesByRegion(regionId).length;
 
     return ctx.reply(
       `${region.emoji} <b>${region.name}</b>\n\n` +
-        `📊 عدد الإيميلات المتوفرة: ${count}\n\n` +
-        "كيف تريد استلام الإيميلات؟",
+        `ًں“ٹ ط¹ط¯ط¯ ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ظ…طھظˆظپط±ط©: ${count}\n\n` +
+        "ظƒظٹظپ طھط±ظٹط¯ ط§ط³طھظ„ط§ظ… ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھطں",
       {
         parse_mode: "HTML",
         ...Markup.inlineKeyboard([
           [
             Markup.button.callback(
-              "📧 أول 50",
+              "ًں“§ ط£ظˆظ„ 50",
               `emails_page:${regionId}:0`
             )
           ],
           [
             Markup.button.callback(
-              "📥 كامل Excel",
+              "ًں“¥ ظƒط§ظ…ظ„ Excel",
               `emails_download:${regionId}`
             )
           ],
           [
             Markup.button.callback(
-              "🔙 المناطق",
+              "ًں”™ ط§ظ„ظ…ظ†ط§ط·ظ‚",
               "company_emails"
             )
           ]
@@ -1326,7 +1351,7 @@ bot.action("emails_search_title", async (ctx) => {
   bot.action(
     /^emails_download:(.+)$/,
     async (ctx) => {
-      await ctx.answerCbQuery("جاري تجهيز الملف...");
+      await ctx.answerCbQuery("ط¬ط§ط±ظٹ طھط¬ظ‡ظٹط² ط§ظ„ظ…ظ„ظپ...");
 
       let outputPath;
 
@@ -1336,7 +1361,7 @@ bot.action("emails_search_title", async (ctx) => {
 
         if (result.count === 0) {
           return ctx.reply(
-            `لا توجد بيانات في ${result.region.name}.`
+            `ظ„ط§ طھظˆط¬ط¯ ط¨ظٹط§ظ†ط§طھ ظپظٹ ${result.region.name}.`
           );
         }
 
@@ -1348,14 +1373,14 @@ bot.action("emails_search_title", async (ctx) => {
           {
             caption:
               `${result.region.emoji} ${result.region.name}\n` +
-              `📊 عدد السجلات: ${result.count}`
+              `ًں“ٹ ط¹ط¯ط¯ ط§ظ„ط³ط¬ظ„ط§طھ: ${result.count}`
           }
         );
       } catch (error) {
         console.error("Company emails error:", error);
 
         await ctx.reply(
-          "❌ حدث خطأ أثناء تجهيز ملف الإيميلات."
+          "â‌Œ ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طھط¬ظ‡ظٹط² ظ…ظ„ظپ ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ."
         );
       } finally {
         if (outputPath && fs.existsSync(outputPath)) {
