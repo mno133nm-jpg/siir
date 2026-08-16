@@ -1,4 +1,4 @@
-import fs from "fs";
+﻿import fs from "fs";
 import path from "path";
 import XLSX from "xlsx";
 import { Markup } from "telegraf";
@@ -444,9 +444,30 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
 
   const messages = createTelegramMessages(page, from);
 
-  for (const message of messages) {
+for (const message of messages) {
+  try {
+    console.log(
+      "📧 Sending email message, length:",
+      message.length
+    );
+
     await ctx.reply(message);
+
+  } catch (error) {
+    console.error(
+      "❌ EMAIL MESSAGE SEND ERROR:",
+      error
+    );
+
+    await ctx.reply(
+      `❌ حدث خطأ أثناء إرسال الإيميلات.
+
+${error?.message || String(error)}`
+    );
+
+    break;
   }
+}
 
   const buttons = [];
 
