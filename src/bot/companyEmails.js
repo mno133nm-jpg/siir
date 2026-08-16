@@ -6,6 +6,9 @@ import { db, save } from "../services/database.js";
 
 const EXCEL_PATH = path.resolve("companies.xlsx");
 const PAGE_SIZE = 50;
+const ADMIN_IDS = [
+  123456789
+];
 
 const ACCESS_CODES = {
   SIR: {
@@ -458,7 +461,9 @@ for (const message of messages) {
   }
 
   try {
-    await ctx.reply(message);
+await ctx.reply(message, {
+  protect_content: true
+});
     sentMessages++;
   } catch (error) {
     console.error(
@@ -498,12 +503,6 @@ ${error?.message || String(error)}`
     ]);
   }
 
-  buttons.push([
-    Markup.button.callback(
-      "📥 تحميل القائمة كاملة",
-      `emails_download:${regionId}`
-    )
-  ]);
 
   buttons.push([
     Markup.button.callback(
@@ -681,7 +680,9 @@ async function sendEmailSearchPage(ctx, sessions) {
   );
 
   for (const message of messages) {
-    await ctx.reply(message);
+await ctx.reply(message, {
+  protect_content: true
+});
   }
 
   const keyboard = [];
@@ -1207,6 +1208,8 @@ bot.action("emails_search_previous", async (ctx) => {
   return sendEmailSearchPage(ctx, sessions);
 });
 bot.on("text", async (ctx, next) => {
+  console.log("MY TELEGRAM ID:", ctx.from.id);
+  
   const session = sessions.get(ctx.from.id);
 
   // =========================
@@ -1346,12 +1349,6 @@ bot.action("emails_search_title", async (ctx) => {
             Markup.button.callback(
               "📧 أول 50",
               `emails_page:${regionId}:0`
-            )
-          ],
-          [
-            Markup.button.callback(
-              "📥 كامل Excel",
-              `emails_download:${regionId}`
             )
           ],
           [
