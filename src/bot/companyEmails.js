@@ -7,7 +7,7 @@ import { db, save } from "../services/database.js";
 const EXCEL_PATH = path.resolve("companies.xlsx");
 const PAGE_SIZE = 50;
 const ADMIN_IDS = [
-  123456789
+  1310982886
 ];
 
 const ACCESS_CODES = {
@@ -1208,8 +1208,7 @@ bot.action("emails_search_previous", async (ctx) => {
   return sendEmailSearchPage(ctx, sessions);
 });
 bot.on("text", async (ctx, next) => {
-  console.log("MY TELEGRAM ID:", ctx.from.id);
-  
+
   const session = sessions.get(ctx.from.id);
 
   // =========================
