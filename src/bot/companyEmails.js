@@ -3,6 +3,7 @@ import path from "path";
 import XLSX from "xlsx";
 import { Markup } from "telegraf";
 import { db, save } from "../services/database.js";
+import { ai } from "../services/ai.js";
 
 const EXCEL_PATH = path.resolve("companies.xlsx");
 const PAGE_SIZE = 50;
@@ -1143,6 +1144,12 @@ bot.action(
     return ctx.reply(
       text.slice(0, 3900),
       Markup.inlineKeyboard([
+[
+  Markup.button.callback(
+    "✉️ جهّز إيميل التقديم",
+    `prepare_apply_email:${companyIndex}`
+  )
+],
         [
           Markup.button.callback(
             "🔙 كل الشركات",
@@ -1207,6 +1214,57 @@ bot.action("emails_search_previous", async (ctx) => {
 
   return sendEmailSearchPage(ctx, sessions);
 });
+bot.action(
+  /^prepare_apply_email:(\d+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const companyNames =
+      getAllCompanyNames();
+
+    const companyIndex =
+      Number(ctx.match[1]);
+
+    const companyName =
+      companyNames[companyIndex];
+
+    if (!companyName) {
+      return ctx.reply(
+        "❌ لم يتم العثور على الشركة."
+      );
+    }
+
+    const session =
+      sessions.get(ctx.from.id) || {};
+
+    session.step =
+      "waiting_apply_email_job_title";
+
+    session.applyEmailCompanyIndex =
+      companyIndex;
+
+    session.applyEmailCompanyName =
+      companyName;
+
+    sessions.set(
+      ctx.from.id,
+      session
+    );
+
+    return ctx.reply(
+      `✉️ تجهيز إيميل التقديم إلى:
+
+🏢 ${companyName}
+
+اكتب المسمى الوظيفي الذي تريد التقديم عليه.
+
+مثال:
+محاسب
+موارد بشرية
+خدمة عملاء`
+    );
+  }
+);
 bot.on("text", async (ctx, next) => {
 
   const session = sessions.get(ctx.from.id);
@@ -1265,6 +1323,98 @@ bot.on("text", async (ctx, next) => {
   // =========================
   // البحث بالمسمى الوظيفي
   // =========================
+ if (
+  session?.step ===
+  "waiting_apply_email_job_title"
+) {
+  const jobTitle =
+    ctx.message.text.trim();
+
+  if (jobTitle.length < 2) {
+    return ctx.reply(
+      "❌ اكتب المسمى الوظيفي بشكل أوضح."
+    );
+  }
+
+  const companyName =
+    session.applyEmailCompanyName;
+
+  await ctx.reply(
+    "⏳ جاري تجهيز إيميل التقديم..."
+  );
+
+  try {
+    const result = await ai(
+      `
+أنت خبير في كتابة رسائل التقديم الوظيفي الاحترافية.
+
+أعد رسالة تقديم قصيرة ومهنية باللغة العربية.
+
+قواعد مهمة:
+- لا تخترع خبرات أو مؤهلات للمستخدم.
+- لا تدّعي أن المستخدم لديه خبرة غير مذكورة.
+- اجعل الرسالة مناسبة لإرسالها إلى قسم التوظيف.
+- لا تكتب كلامًا مبالغًا فيه.
+- لا تستخدم Markdown.
+- أعد JSON فقط بهذا الشكل:
+
+{
+  "subject": "عنوان الإيميل",
+  "body": "نص الإيميل"
+}
+      `,
+      `
+اسم الشركة:
+${companyName}
+
+المسمى الوظيفي المستهدف:
+${jobTitle}
+
+اكتب عنوان إيميل ونص تقديم احترافي.
+      `
+    );
+
+    session.step = null;
+    session.applyEmailCompanyIndex = null;
+    session.applyEmailCompanyName = null;
+
+    sessions.set(
+      ctx.from.id,
+      session
+    );
+
+    return ctx.reply(
+      `✉️ إيميل التقديم جاهز
+
+🏢 الشركة:
+${companyName}
+
+💼 المسمى:
+${jobTitle}
+
+📌 عنوان الإيميل:
+${result.subject}
+
+📝 نص الرسالة:
+
+${result.body}`,
+      {
+        protect_content: true
+      }
+    );
+
+  } catch (error) {
+    console.error(
+      "Apply email generation error:",
+      error
+    );
+
+    return ctx.reply(
+      "❌ حدث خطأ أثناء تجهيز إيميل التقديم. حاول مرة أخرى."
+    );
+  }
+}
+
   if (session?.step !== "emails_search_title") {
     return next();
   }
