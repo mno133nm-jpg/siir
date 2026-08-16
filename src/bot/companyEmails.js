@@ -990,6 +990,8 @@ if (session?.step === "waiting_email_access_code") {
   const code = ctx.message.text
     .trim()
     .toUpperCase();
+console.log("CODE RECEIVED:", JSON.stringify(code));
+console.log("AVAILABLE CODES:", Object.keys(ACCESS_CODES));
 
 const duration = ACCESS_CODES[code];
 
