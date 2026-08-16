@@ -1,4 +1,4 @@
-﻿import fs from "fs";
+import fs from "fs";
 import path from "path";
 import XLSX from "xlsx";
 import { Markup } from "telegraf";
@@ -10,37 +10,37 @@ const PAGE_SIZE = 50;
 const ACCESS_CODES = {
   SIR: {
     hours: 5,
-    label: "5 ط³ط§ط¹ط§طھ",
+    label: "5 ساعات",
     oneTime: true
   },
 
   TRIAL5: {
     hours: 5,
-    label: "5 ط³ط§ط¹ط§طھ",
+    label: "5 ساعات",
     oneTime: true
   },
 
   FREETHAMER: {
     months: 6,
-    label: "6 ط´ظ‡ظˆط±",
+    label: "6 شهور",
     oneTime: true
   },
 
   SIRFREE: {
     days: 60,
-    label: "60 ظٹظˆظ…",
+    label: "60 يوم",
     oneTime: true
   },
 
   TIKTOK: {
     days: 30,
-    label: "30 ظٹظˆظ…",
+    label: "30 يوم",
     oneTime: true
   },
 
   VIP2026: {
     days: 90,
-    label: "90 ظٹظˆظ…",
+    label: "90 يوم",
     oneTime: true
   }
 };
@@ -74,7 +74,7 @@ function activateEmailAccessByCode(userId, code, duration) {
 
   user.usedAccessCodes = user.usedAccessCodes || [];
 
-  // ظ…ظ†ط¹ ط§ط³طھط®ط¯ط§ظ… ظ†ظپط³ ط§ظ„ظƒظˆط¯ ط£ظƒط«ط± ظ…ظ† ظ…ط±ط©
+  // منع استخدام نفس الكود أكثر من مرة
   if (
     duration.oneTime &&
     user.usedAccessCodes.includes(code)
@@ -291,25 +291,25 @@ function getCompaniesByRegion(regionId) {
 }
 
 function formatCompany(company, number) {
-  const parts = [`${number}. ًںڈ¢ ${company.company || "ط´ط±ظƒط© ط؛ظٹط± ظ…ط­ط¯ط¯ط©"}`];
+  const parts = [`${number}. 🏢 ${company.company || "شركة غير محددة"}`];
 
   if (company.email) {
-    parts.push(`ًں“§ ${company.email}`);
+    parts.push(`📧 ${company.email}`);
   }
 
   if (company.city) {
-    parts.push(`ًں“چ ${company.city}`);
+    parts.push(`📍 ${company.city}`);
   }
 
   if (company.jobTitle) {
-    parts.push(`ًں’¼ ${company.jobTitle}`);
+    parts.push(`💼 ${company.jobTitle}`);
   }
 
   return parts.join("\n");
 }
 
 /**
- * ظٹظ‚ط³ظ… ط§ظ„ظ‚ط§ط¦ظ…ط© ط¥ظ„ظ‰ ط±ط³ط§ط¦ظ„ ظ„ط§ طھطھط¬ط§ظˆط² ط­ط¯ طھظٹظ„ظٹط¬ط±ط§ظ….
+ * يقسم القائمة إلى رسائل لا تتجاوز حد تيليجرام.
  */
 function createTelegramMessages(companies, startingNumber) {
   const messages = [];
@@ -322,7 +322,7 @@ function createTelegramMessages(companies, startingNumber) {
     );
 
     const separator = currentMessage
-      ? "\n\nâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ\n\n"
+      ? "\n\n━━━━━━━━━━━━━━\n\n"
       : "";
 
     if (
@@ -358,7 +358,7 @@ async function sendCompaniesNamesPage(
 
   if (!page.length) {
     return ctx.reply(
-      "â‌Œ ظ„ط§ طھظˆط¬ط¯ ط´ط±ظƒط§طھ ظ…ط³ط¬ظ„ط©."
+      "❌ لا توجد شركات مسجلة."
     );
   }
 
@@ -374,7 +374,7 @@ async function sendCompaniesNamesPage(
   if (offset + pageSize < companyNames.length) {
     buttons.push([
       Markup.button.callback(
-        "â‍،ï¸ڈ ط§ظ„ط´ط±ظƒط§طھ ط§ظ„طھط§ظ„ظٹط©",
+        "➡️ الشركات التالية",
         `big_companies_page:${offset + pageSize}`
       )
     ]);
@@ -383,7 +383,7 @@ async function sendCompaniesNamesPage(
   if (offset > 0) {
     buttons.push([
       Markup.button.callback(
-        "â¬…ï¸ڈ ط§ظ„ط´ط±ظƒط§طھ ط§ظ„ط³ط§ط¨ظ‚ط©",
+        "⬅️ الشركات السابقة",
         `big_companies_page:${Math.max(
           0,
           offset - pageSize
@@ -394,16 +394,16 @@ async function sendCompaniesNamesPage(
 
   buttons.push([
     Markup.button.callback(
-      "ًں”™ ط±ط¬ظˆط¹",
+      "🔙 رجوع",
       "company_emails"
     )
   ]);
 
   return ctx.reply(
-    `ًںڈ¢ ط§ظ„ط´ط±ظƒط§طھ ط§ظ„ظ…ط³ط¬ظ„ط©
+    `🏢 الشركات المسجلة
 
-ًں“ٹ ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${companyNames.length}
-ًں“„ ط¹ط±ط¶ ${offset + 1} ط¥ظ„ظ‰ ${
+📊 الإجمالي: ${companyNames.length}
+📄 عرض ${offset + 1} إلى ${
       offset + page.length
     }`,
     Markup.inlineKeyboard(buttons)
@@ -414,7 +414,7 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
   const region = regions[regionId];
 
   if (!region) {
-    return ctx.reply("â‌Œ ط§ظ„ظ…ظ†ط·ظ‚ط© ط؛ظٹط± طµط­ظٹط­ط©.");
+    return ctx.reply("❌ المنطقة غير صحيحة.");
   }
 
   const companies = getCompaniesByRegion(regionId);
@@ -422,12 +422,12 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
 
   if (companies.length === 0) {
     return ctx.reply(
-      `ظ„ط§ طھظˆط¬ط¯ ط¥ظٹظ…ظٹظ„ط§طھ ظ…ط³ط¬ظ„ط© ط­ط§ظ„ظٹظ‹ط§ ظپظٹ ${region.name}.`
+      `لا توجد إيميلات مسجلة حاليًا في ${region.name}.`
     );
   }
 
   if (page.length === 0) {
-    return ctx.reply("âœ… ظˆطµظ„طھظگ ط¥ظ„ظ‰ ظ†ظ‡ط§ظٹط© ط§ظ„ظ‚ط§ط¦ظ…ط©.");
+    return ctx.reply("✅ وصلتِ إلى نهاية القائمة.");
   }
 
   const from = offset + 1;
@@ -435,8 +435,8 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
 
   await ctx.reply(
     `${region.emoji} <b>${region.name}</b>\n` +
-      `ًں“§ ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ظ…ظ† ${from} ط¥ظ„ظ‰ ${to}\n` +
-      `ًں“ٹ ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${companies.length}`,
+      `📧 الإيميلات من ${from} إلى ${to}\n` +
+      `📊 الإجمالي: ${companies.length}`,
     {
       parse_mode: "HTML"
     }
@@ -453,7 +453,7 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
   if (offset + PAGE_SIZE < companies.length) {
     buttons.push([
       Markup.button.callback(
-        "â‍،ï¸ڈ ط§ظ„طھط§ظ„ظٹ 50",
+        "➡️ التالي 50",
         `emails_page:${regionId}:${offset + PAGE_SIZE}`
       )
     ]);
@@ -462,7 +462,7 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
   if (offset > 0) {
     buttons.push([
       Markup.button.callback(
-        "â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚ 50",
+        "⬅️ السابق 50",
         `emails_page:${regionId}:${Math.max(
           0,
           offset - PAGE_SIZE
@@ -473,26 +473,26 @@ async function sendEmailPage(ctx, regionId, offset = 0) {
 
   buttons.push([
     Markup.button.callback(
-      "ًں“¥ طھط­ظ…ظٹظ„ ط§ظ„ظ‚ط§ط¦ظ…ط© ظƒط§ظ…ظ„ط©",
+      "📥 تحميل القائمة كاملة",
       `emails_download:${regionId}`
     )
   ]);
 
   buttons.push([
     Markup.button.callback(
-      "ًں”™ ط§ظ„ظ…ظ†ط§ط·ظ‚",
+      "🔙 المناطق",
       "company_emails"
     ),
     Markup.button.callback(
-      "ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©",
+      "🏠 الرئيسية",
       "back_to_menu"
     )
   ]);
 
   return ctx.reply(
     offset + PAGE_SIZE < companies.length
-      ? `âœ… طھظ… ط¥ط±ط³ط§ظ„ ${page.length} ط¥ظٹظ…ظٹظ„.`
-      : "âœ… طھظ… ط¥ط±ط³ط§ظ„ ط¢ط®ط± ط¯ظپط¹ط© ظ…ظ† ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ.",
+      ? `✅ تم إرسال ${page.length} إيميل.`
+      : "✅ تم إرسال آخر دفعة من الإيميلات.",
     Markup.inlineKeyboard(buttons)
   );
 }
@@ -505,7 +505,7 @@ function createRegionExcel(regionId) {
     Email: company.email,
     City: company.city,
     Company: company.company,
-    "ط§ظ„ظ…ط³ظ…ظ‰ ط§ظ„ظˆط¸ظٹظپظٹ": company.jobTitle
+    "المسمى الوظيفي": company.jobTitle
   }));
 
   const workbook = XLSX.utils.book_new();
@@ -555,7 +555,7 @@ function normalizeSearchText(text = "") {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u064B-\u065F\u0670]/g, "")
-    .replace(/[ط£ط¥ط¢]/g, "ط§")
+    .replace(/[أإآ]/g, "ا")
     .replace(/ط©/g, "ظ‡")
     .replace(/ظ‰/g, "ظٹ")
     .replace(/\s+/g, " ");
@@ -581,7 +581,7 @@ export function searchCompaniesByJobTitle(query) {
       return false;
     }
 
-    // ظٹط·ط§ط¨ظ‚ ط§ظ„ظ†طµ ظƒط§ظ…ظ„ظ‹ط§ ط£ظˆ ط¬ظ…ظٹط¹ ط§ظ„ظƒظ„ظ…ط§طھ ط§ظ„طھظٹ ظƒطھط¨ظ‡ط§ ط§ظ„ظ…ط³طھط®ط¯ظ…
+    // يطابق النص كاملًا أو جميع الكلمات التي كتبها المستخدم
     return (
       normalizedTitle.includes(normalizedQuery) ||
       queryWords.every((word) =>
@@ -590,7 +590,7 @@ export function searchCompaniesByJobTitle(query) {
     );
   });
 
-  // ط­ط°ظپ ط§ظ„ظ†طھط§ط¦ط¬ ط§ظ„ظ…ظƒط±ط±ط©
+  // حذف النتائج المكررة
   return results.filter(
     (company, index, self) =>
       index ===
@@ -633,7 +633,7 @@ async function sendEmailSearchPage(ctx, sessions) {
   const session = sessions.get(ctx.from.id);
 
   if (!session?.emailSearchResults?.length) {
-    return ctx.reply("â‌Œ ط§ظ†طھظ‡طھ ط¬ظ„ط³ط© ط§ظ„ط¨ط­ط«.");
+    return ctx.reply("❌ انتهت جلسة البحث.");
   }
 
   const offset = session.emailSearchOffset || 0;
@@ -647,10 +647,10 @@ async function sendEmailSearchPage(ctx, sessions) {
   );
 
   await ctx.reply(
-    `ًں”چ ظ†طھط§ط¦ط¬ ط§ظ„ط¨ط­ط« ط¹ظ†: ${session.emailSearchQuery}
+    `🔍 نتائج البحث عن: ${session.emailSearchQuery}
 
-ًں“„ ط§ظ„ظ†طھط§ط¦ط¬ ${offset + 1} - ${offset + page.length}
-ًں“ٹ ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ†طھط§ط¦ط¬: ${results.length}`
+📄 النتائج ${offset + 1} - ${offset + page.length}
+📊 إجمالي النتائج: ${results.length}`
   );
 
   for (const message of messages) {
@@ -662,10 +662,10 @@ async function sendEmailSearchPage(ctx, sessions) {
   if (offset + PAGE_SIZE < results.length) {
     keyboard.push([
       Markup.button.callback(
-        `ًں“© ط¹ط±ط¶ ${Math.min(
+        `📩 عرض ${Math.min(
           PAGE_SIZE,
           results.length - (offset + PAGE_SIZE)
-        )} ظ†طھظٹط¬ط© ط§ظ„طھط§ظ„ظٹط©`,
+        )} نتيجة التالية`,
         "emails_search_next"
       )
     ]);
@@ -674,7 +674,7 @@ async function sendEmailSearchPage(ctx, sessions) {
   if (offset > 0) {
     keyboard.push([
       Markup.button.callback(
-        "â¬…ï¸ڈ ط§ظ„ظ†طھط§ط¦ط¬ ط§ظ„ط³ط§ط¨ظ‚ط©",
+        "⬅️ النتائج السابقة",
         "emails_search_previous"
       )
     ]);
@@ -682,13 +682,13 @@ async function sendEmailSearchPage(ctx, sessions) {
 
   keyboard.push([
     Markup.button.callback(
-      "ًں”چ ط¨ط­ط« ط¬ط¯ظٹط¯",
+      "🔍 بحث جديد",
       "emails_search_title"
     )
   ]);
 
   return ctx.reply(
-    "ط§ط®طھط±:",
+    "اختر:",
     Markup.inlineKeyboard(keyboard)
   );
 }
@@ -749,13 +749,13 @@ bot.action("email_sub_30", async (ctx) => {
   await ctx.answerCbQuery();
 
   return ctx.replyWithInvoice({
-    title: "Sir AI - ط§ط´طھط±ط§ظƒ ط´ظ‡ط±",
-    description: "ظˆطµظˆظ„ ظƒط§ظ…ظ„ ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظ„ظ…ط¯ط© 30 ظٹظˆظ…",
+    title: "Sir AI - اشتراك شهر",
+    description: "وصول كامل لإيميلات الشركات لمدة 30 يوم",
     payload: `email_subscription_30:${ctx.from.id}`,
     currency: "XTR",
     prices: [
       {
-        label: "ط§ط´طھط±ط§ظƒ ط´ظ‡ط±",
+        label: "اشتراك شهر",
         amount: 250
       }
     ]
@@ -766,13 +766,13 @@ bot.action("email_sub_60", async (ctx) => {
   await ctx.answerCbQuery();
 
   return ctx.replyWithInvoice({
-    title: "Sir AI - ط§ط´طھط±ط§ظƒ ط´ظ‡ط±ظٹظ†",
-    description: "ظˆطµظˆظ„ ظƒط§ظ…ظ„ ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظ„ظ…ط¯ط© 60 ظٹظˆظ…",
+    title: "Sir AI - اشتراك شهرين",
+    description: "وصول كامل لإيميلات الشركات لمدة 60 يوم",
     payload: `email_subscription_60:${ctx.from.id}`,
     currency: "XTR",
     prices: [
       {
-        label: "ط§ط´طھط±ط§ظƒ ط´ظ‡ط±ظٹظ†",
+        label: "اشتراك شهرين",
         amount: 350
       }
     ]
@@ -790,7 +790,7 @@ bot.action("email_access_code", async (ctx) => {
   sessions.set(ctx.from.id, session);
 
   return ctx.reply(
-    "ًںژںï¸ڈ ط£ط±ط³ظ„ ظƒظˆط¯ ط§ظ„ط¯ط®ظˆظ„:"
+    "🎟️ أرسل كود الدخول:"
   );
 });
 
@@ -835,17 +835,17 @@ bot.on("successful_payment", async (ctx) => {
     );
 
   return ctx.reply(
-    `âœ… طھظ… طھظپط¹ظٹظ„ ط§ط´طھط±ط§ظƒظƒ ط¨ظ†ط¬ط§ط­
+    `✅ تم تفعيل اشتراكك بنجاح
 
-â­گ طھظ… ط§ظ„ط¯ظپط¹: ${payment.total_amount} ظ†ط¬ظ…ط©
-âڈ³ ظ…ط¯ط© ط§ظ„ط§ط´طھط±ط§ظƒ: ${days} ظٹظˆظ…
-ًں“… ظٹظ†طھظ‡ظٹ ط§ظ„ط§ط´طھط±ط§ظƒ: ${expiresAt.toLocaleDateString("ar-SA")}
+⭐ تم الدفع: ${payment.total_amount} نجمة
+⏳ مدة الاشتراك: ${days} يوم
+📅 ينتهي الاشتراك: ${expiresAt.toLocaleDateString("ar-SA")}
 
-ًں“§ طھظ… ظپطھط­ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظ„ظƒ.`,
+📧 تم فتح إيميلات الشركات لك.`,
     Markup.inlineKeyboard([
       [
         Markup.button.callback(
-          "ًں“§ ظپطھط­ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ",
+          "📧 فتح إيميلات الشركات",
           "company_emails"
         )
       ]
@@ -860,33 +860,33 @@ bot.action("company_emails", async (ctx) => {
 
   if (!hasEmailAccess(ctx.from.id)) {
     return ctx.reply(
-      `ًں”گ ط§ط®طھط± ط·ط±ظٹظ‚ط© ط§ظ„ط¯ط®ظˆظ„ ط¥ظ„ظ‰ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ:
+      `🔐 اختر طريقة الدخول إلى إيميلات الشركات:
 
-â­گ ط´ظ‡ط± ظˆط§ط­ط¯ â€” 250 ظ†ط¬ظ…ط©
-ًں”¥ ط´ظ‡ط±ط§ظ† â€” 350 ظ†ط¬ظ…ط©
-ًںژںï¸ڈ ظ„ط¯ظٹ ظƒظˆط¯ ط¯ط®ظˆظ„`,
+⭐ شهر واحد — 250 نجمة
+🔥 شهران — 350 نجمة
+🎟️ لدي كود دخول`,
       Markup.inlineKeyboard([
         [
           Markup.button.callback(
-            "â­گ ط´ظ‡ط± â€” 250",
+            "⭐ شهر — 250",
             "email_sub_30"
           )
         ],
         [
           Markup.button.callback(
-            "ًں”¥ ط´ظ‡ط±ط§ظ† â€” 350",
+            "🔥 شهران — 350",
             "email_sub_60"
           )
         ],
         [
           Markup.button.callback(
-            "ًںژںï¸ڈ ظ„ط¯ظٹ ظƒظˆط¯ ط¯ط®ظˆظ„",
+            "🎟️ لدي كود دخول",
             "email_access_code"
           )
         ],
         [
           Markup.button.callback(
-            "ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©",
+            "🏠 الرئيسية",
             "back_to_menu"
           )
         ]
@@ -895,65 +895,65 @@ bot.action("company_emails", async (ctx) => {
   }
 
   return ctx.reply(
-    "ًں“§ ط§ط®طھط± ط§ظ„ظ…ظ†ط·ظ‚ط© ط§ظ„طھظٹ طھط±ظٹط¯ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظپظٹظ‡ط§:",
+    "📧 اختر المنطقة التي تريد إيميلات الشركات فيها:",
     Markup.inlineKeyboard([
       [
         Markup.button.callback(
-          "ًںڈ¢ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ط§ظ„ظƒط¨ظٹط±ط©",
+          "🏢 إيميلات الشركات الكبيرة",
           "emails_region:bigCompanies"
         )
       ],
       [
         Markup.button.callback(
-          "ًں”چ ط§ظ„ط¨ط­ط« ط¨ط§ظ„ظ…ط³ظ…ظ‰ ط§ظ„ظˆط¸ظٹظپظٹ",
+          "🔍 البحث بالمسمى الوظيفي",
           "emails_search_title"
         )
       ],
       [
         Markup.button.callback(
-          "ًں†• ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط­ط¯ظٹط«ط©",
+          "🆕 الإيميلات الحديثة",
           "recent_emails"
         )
       ],
       [
         Markup.button.callback(
-          "ًں“چ ط§ظ„ط±ظٹط§ط¶",
+          "📍 الرياض",
           "emails_region:riyadh"
         ),
         Markup.button.callback(
-          "ًںŒٹ ط§ظ„ط´ط±ظ‚ظٹط©",
+          "🌊 الشرقية",
           "emails_region:eastern"
         )
       ],
       [
         Markup.button.callback(
-          "ًںŒ´ ط§ظ„ط؛ط±ط¨ظٹط©",
+          "🌴 الغربية",
           "emails_region:western"
         ),
         Markup.button.callback(
-          "â›°ï¸ڈ ط§ظ„ط¬ظ†ظˆط¨",
+          "⛰️ الجنوب",
           "emails_region:south"
         )
       ],
       [
         Markup.button.callback(
-          "ًںŒ¾ ط§ظ„ظ‚طµظٹظ…",
+          "🌾 القصيم",
           "emails_region:qassim"
         ),
         Markup.button.callback(
-          "ًںڈ”ï¸ڈ ط§ظ„ط´ظ…ط§ظ„",
+          "🏔️ الشمال",
           "emails_region:north"
         )
       ],
       [
         Markup.button.callback(
-          "ًں“© ظƒظ„ ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ",
+          "📩 كل الإيميلات",
           "emails_region:all"
         )
       ],
       [
         Markup.button.callback(
-          "ًںڈ  ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©",
+          "🏠 القائمة الرئيسية",
           "back_to_menu"
         )
       ]
@@ -961,7 +961,7 @@ bot.action("company_emails", async (ctx) => {
   );
 });
 
-  // ط¨ط¹ط¯ ظƒظ„ ظ…ط§ ط³ط¨ظ‚ ظٹط¨ط¯ط£ ظ‡ط°ط§
+  // بعد كل ما سبق يبدأ هذا
        
   bot.action("recent_emails", async (ctx) => {
   await ctx.answerCbQuery();
@@ -970,7 +970,7 @@ bot.action("company_emails", async (ctx) => {
 
   if (!results.length) {
     return ctx.reply(
-      "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط¥ظٹظ…ظٹظ„ط§طھ ط­ط¯ظٹط«ط© ط­ط§ظ„ظٹظ‹ط§."
+      "📭 لا توجد إيميلات حديثة حاليًا."
     );
   }
 
@@ -984,7 +984,7 @@ bot.action("company_emails", async (ctx) => {
     step: "emails_search_results",
     emailSearchResults: latestResults,
     emailSearchOffset: 0,
-    emailSearchQuery: `ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ظ…ط¶ط§ظپط© ط¨طھط§ط±ظٹط® ${latestDate}`
+    emailSearchQuery: `الإيميلات المضافة بتاريخ ${latestDate}`
   });
 if (session?.step === "waiting_email_access_code") {
   const code = ctx.message.text
@@ -997,7 +997,7 @@ const duration = ACCESS_CODES[code];
 
 if (!duration) {
       return ctx.reply(
-      "â‌Œ ط§ظ„ظƒظˆط¯ ط؛ظٹط± طµط­ظٹط­. ط­ط§ظˆظ„ظٹ ظ…ط±ط© ط£ط®ط±ظ‰."
+      "❌ الكود غير صحيح. حاولي مرة أخرى."
     );
   }
 
@@ -1009,7 +1009,7 @@ const result = activateEmailAccessByCode(
 
 if (result?.error === "TRIAL_ALREADY_USED") {
   return ctx.reply(
-    "â‌Œ طھظ… ط§ط³طھط®ط¯ط§ظ… ظƒظˆط¯ ط§ظ„طھط¬ط±ط¨ط© ط§ظ„ظ…ط¬ط§ظ†ظٹط© ظ„ظ‡ط°ط§ ط§ظ„ط­ط³ط§ط¨ ظ…ط³ط¨ظ‚ظ‹ط§."
+    "❌ تم استخدام كود التجربة المجانية لهذا الحساب مسبقًا."
   );
 }
 
@@ -1018,17 +1018,17 @@ const expiresAt = result.expiresAt;
   sessions.delete(ctx.from.id);
 
   return ctx.reply(
-    `âœ… طھظ… طھظپط¹ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ظ…ط¬ط§ظ†ظٹ
+    `✅ تم تفعيل الدخول المجاني
 
-ًںژںï¸ڈ ط§ظ„ظƒظˆط¯: ${code}
-âڈ³ ط§ظ„ظ…ط¯ط©: ${duration.label}
-ًں“… ظٹظ†طھظ‡ظٹ: ${expiresAt.toLocaleDateString("ar-SA")}
+🎟️ الكود: ${code}
+⏳ المدة: ${duration.label}
+📅 ينتهي: ${expiresAt.toLocaleDateString("ar-SA")}
 
-ًں“§ طھظ… ظپطھط­ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ ظ„ظƒ.`,
+📧 تم فتح إيميلات الشركات لك.`,
     Markup.inlineKeyboard([
       [
         Markup.button.callback(
-          "ًں“§ ظپطھط­ ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط´ط±ظƒط§طھ",
+          "📧 فتح إيميلات الشركات",
           "company_emails"
         )
       ]
@@ -1077,7 +1077,7 @@ bot.action(
 
     if (!companyName) {
       return ctx.reply(
-        "â‌Œ ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط§ظ„ط´ط±ظƒط©."
+        "❌ لم يتم العثور على الشركة."
       );
     }
 
@@ -1088,25 +1088,25 @@ bot.action(
 
     if (!results.length) {
       return ctx.reply(
-        "â‌Œ ظ„ط§ طھظˆط¬ط¯ ط¨ظٹط§ظ†ط§طھ ظ„ظ‡ط°ظ‡ ط§ظ„ط´ط±ظƒط©."
+        "❌ لا توجد بيانات لهذه الشركة."
       );
     }
 
-    let text = `ًںڈ¢ ${companyName}\n\n`;
+    let text = `🏢 ${companyName}\n\n`;
 
     results.forEach((item, index) => {
       text += `${index + 1}.\n`;
 
       if (item.email) {
-        text += `ًں“§ ${item.email}\n`;
+        text += `📧 ${item.email}\n`;
       }
 
       if (item.city) {
-        text += `ًں“چ ${item.city}\n`;
+        text += `📍 ${item.city}\n`;
       }
 
       if (item.jobTitle) {
-        text += `ًں’¼ ${item.jobTitle}\n`;
+        text += `💼 ${item.jobTitle}\n`;
       }
 
       text += "\n";
@@ -1117,19 +1117,19 @@ bot.action(
       Markup.inlineKeyboard([
         [
           Markup.button.callback(
-            "ًں”™ ظƒظ„ ط§ظ„ط´ط±ظƒط§طھ",
+            "🔙 كل الشركات",
             "big_companies"
           )
         ],
         [
   Markup.button.callback(
-    "ًں†• ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ط­ط¯ظٹط«ط©",
+    "🆕 الإيميلات الحديثة",
     "recent_emails"
   )
 ],
         [
           Markup.button.callback(
-            "ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©",
+            "🏠 الرئيسية",
             "back_to_menu"
           )
         ]
@@ -1141,7 +1141,7 @@ bot.action(
   bot.action("big_companies", async (ctx) => {
   await ctx.answerCbQuery();
 
-  // ط¹ط±ط¶ ظ‚ط§ط¦ظ…ط© ط§ظ„ط´ط±ظƒط§طھ ط§ظ„ظƒط¨ظٹط±ط©
+  // عرض قائمة الشركات الكبيرة
 });
 
   bot.action("emails_search_next", async (ctx) => {
@@ -1150,7 +1150,7 @@ bot.action(
   const session = sessions.get(ctx.from.id);
 
   if (!session?.emailSearchResults) {
-    return ctx.reply("â‌Œ ط§ظ†طھظ‡طھ ط¬ظ„ط³ط© ط§ظ„ط¨ط­ط«. ط§ط¨ط¯ط¦ظٹ ط¨ط­ط«ظ‹ط§ ط¬ط¯ظٹط¯ظ‹ط§.");
+    return ctx.reply("❌ انتهت جلسة البحث. ابدئي بحثًا جديدًا.");
   }
 
   session.emailSearchOffset =
@@ -1167,7 +1167,7 @@ bot.action("emails_search_previous", async (ctx) => {
   const session = sessions.get(ctx.from.id);
 
   if (!session?.emailSearchResults) {
-    return ctx.reply("â‌Œ ط§ظ†طھظ‡طھ ط¬ظ„ط³ط© ط§ظ„ط¨ط­ط«. ط§ط¨ط¯ط¦ظٹ ط¨ط­ط«ظ‹ط§ ط¬ط¯ظٹط¯ظ‹ط§.");
+    return ctx.reply("❌ انتهت جلسة البحث. ابدئي بحثًا جديدًا.");
   }
 
   session.emailSearchOffset = Math.max(
@@ -1283,16 +1283,16 @@ bot.action("emails_search_title", async (ctx) => {
   });
 
   return ctx.reply(
-    `ًں”چ ط§ظƒطھط¨ ط§ظ„ظ…ط³ظ…ظ‰ ط§ظ„ظˆط¸ظٹظپظٹ ط£ظˆ ط¬ط²ط،ظ‹ط§ ظ…ظ†ظ‡.
+    `🔍 اكتب المسمى الوظيفي أو جزءًا منه.
 
-ط£ظ…ط«ظ„ط©:
-â€¢ ظ…ظˆط§ط±ط¯ ط¨ط´ط±ظٹط©
-â€¢ ظ…ط­ط§ط³ط¨
-â€¢ ظ…ظ‡ظ†ط¯ط³
-â€¢ ط®ط¯ظ…ط© ط¹ظ…ظ„ط§ط،
-â€¢ ظ‚ط§ظ†ظˆظ†
+أمثلة:
+• موارد بشرية
+• محاسب
+• مهندس
+• خدمة عملاء
+• قانون
 
-ط³ظٹطھظ… ط§ظ„ط¨ط­ط« ط¯ط§ط®ظ„ ط¬ظ…ظٹط¹ ط§ظ„ظ…ط³ظ…ظٹط§طھ ط§ظ„ظ…ظˆط¬ظˆط¯ط© ظپظٹ ظ…ظ„ظپ Excel.`
+سيتم البحث داخل جميع المسميات الموجودة في ملف Excel.`
   );
 });
 
@@ -1303,33 +1303,33 @@ bot.action("emails_search_title", async (ctx) => {
     const region = regions[regionId];
 
     if (!region) {
-      return ctx.reply("â‌Œ ط§ظ„ظ…ظ†ط·ظ‚ط© ط؛ظٹط± طµط­ظٹط­ط©.");
+      return ctx.reply("❌ المنطقة غير صحيحة.");
     }
 
     const count = getCompaniesByRegion(regionId).length;
 
     return ctx.reply(
       `${region.emoji} <b>${region.name}</b>\n\n` +
-        `ًں“ٹ ط¹ط¯ط¯ ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ ط§ظ„ظ…طھظˆظپط±ط©: ${count}\n\n` +
-        "ظƒظٹظپ طھط±ظٹط¯ ط§ط³طھظ„ط§ظ… ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھطں",
+        `📊 عدد الإيميلات المتوفرة: ${count}\n\n` +
+        "كيف تريد استلام الإيميلات؟",
       {
         parse_mode: "HTML",
         ...Markup.inlineKeyboard([
           [
             Markup.button.callback(
-              "ًں“§ ط£ظˆظ„ 50",
+              "📧 أول 50",
               `emails_page:${regionId}:0`
             )
           ],
           [
             Markup.button.callback(
-              "ًں“¥ ظƒط§ظ…ظ„ Excel",
+              "📥 كامل Excel",
               `emails_download:${regionId}`
             )
           ],
           [
             Markup.button.callback(
-              "ًں”™ ط§ظ„ظ…ظ†ط§ط·ظ‚",
+              "🔙 المناطق",
               "company_emails"
             )
           ]
@@ -1353,7 +1353,7 @@ bot.action("emails_search_title", async (ctx) => {
   bot.action(
     /^emails_download:(.+)$/,
     async (ctx) => {
-      await ctx.answerCbQuery("ط¬ط§ط±ظٹ طھط¬ظ‡ظٹط² ط§ظ„ظ…ظ„ظپ...");
+      await ctx.answerCbQuery("جاري تجهيز الملف...");
 
       let outputPath;
 
@@ -1363,7 +1363,7 @@ bot.action("emails_search_title", async (ctx) => {
 
         if (result.count === 0) {
           return ctx.reply(
-            `ظ„ط§ طھظˆط¬ط¯ ط¨ظٹط§ظ†ط§طھ ظپظٹ ${result.region.name}.`
+            `لا توجد بيانات في ${result.region.name}.`
           );
         }
 
@@ -1375,14 +1375,14 @@ bot.action("emails_search_title", async (ctx) => {
           {
             caption:
               `${result.region.emoji} ${result.region.name}\n` +
-              `ًں“ٹ ط¹ط¯ط¯ ط§ظ„ط³ط¬ظ„ط§طھ: ${result.count}`
+              `📊 عدد السجلات: ${result.count}`
           }
         );
       } catch (error) {
         console.error("Company emails error:", error);
 
         await ctx.reply(
-          "â‌Œ ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طھط¬ظ‡ظٹط² ظ…ظ„ظپ ط§ظ„ط¥ظٹظ…ظٹظ„ط§طھ."
+          "❌ حدث خطأ أثناء تجهيز ملف الإيميلات."
         );
       } finally {
         if (outputPath && fs.existsSync(outputPath)) {
