@@ -13,14 +13,14 @@ const ADMIN_IDS = [
 
 const ACCESS_CODES = {
   SIR: {
-    hours: 5,
-    label: "5 ساعات",
+    hours: 1,
+    label: "1 ساعة",
     oneTime: true
   },
 
   TRIAL5: {
-    hours: 5,
-    label: "5 ساعات",
+    hours: 1,
+    label: "1 ساعة",
     oneTime: true
   },
 
