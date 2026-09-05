@@ -1398,9 +1398,6 @@ process.once("SIGTERM", () => bot.stop("SIGTERM"));
 // Railway Web Server
 // =====================
 
-const PORT = process.env.PORT || 8080;
-
-const server = http.createServer((req, res) => {
 
   // Apple Pay domain verification
   if (
