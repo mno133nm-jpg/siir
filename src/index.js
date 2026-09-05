@@ -1328,6 +1328,8 @@ bot.catch((err) => {
 const WEB_PORT = process.env.PORT || 8080;
 
 const server = http.createServer((req, res) => {
+  console.log("HTTP REQUEST:", req.method, req.url);
+  
 
   // Apple Pay domain verification
   if (
