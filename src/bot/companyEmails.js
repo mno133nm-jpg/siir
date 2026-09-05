@@ -891,20 +891,13 @@ bot.action("company_emails", async (ctx) => {
     return ctx.reply(
       `🔐 اختر طريقة الدخول إلى إيميلات الشركات:
 
-⭐ شهر واحد — 250 نجمة
-🔥 شهران — 350 نجمة
-🎟️ لدي كود دخول`,
+💳 اشتراك سير AI — 9 ريال / شهر
+🎟️ أو استخدم كود دخول إذا كان لديك كود`,
       Markup.inlineKeyboard([
         [
           Markup.button.callback(
-            "⭐ شهر — 250",
-            "email_sub_30"
-          )
-        ],
-        [
-          Markup.button.callback(
-            "🔥 شهران — 350",
-            "email_sub_60"
+            "💳 الاشتراك — 9 ريال",
+            "subscribe"
           )
         ],
         [
