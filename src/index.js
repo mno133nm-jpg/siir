@@ -1394,3 +1394,58 @@ bot.launch().then(async () => {
 process.once("SIGINT", () => bot.stop("SIGINT"));
 
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
+// =====================
+// Railway Web Server
+// =====================
+
+const PORT = process.env.PORT || 8080;
+
+const server = http.createServer((req, res) => {
+
+  // Apple Pay domain verification
+  if (
+    req.method === "GET" &&
+    req.url === "/.well-known/apple-developer-merchantid-domain-association"
+  ) {
+    const filePath =
+      "./.well-known/apple-developer-merchantid-domain-association";
+
+    if (!fs.existsSync(filePath)) {
+      res.writeHead(404, {
+        "Content-Type": "text/plain; charset=utf-8"
+      });
+
+      return res.end("Apple Pay verification file not found");
+    }
+
+    const file = fs.readFileSync(filePath);
+
+    res.writeHead(200, {
+      "Content-Type": "text/plain"
+    });
+
+    return res.end(file);
+  }
+
+  // Health check
+  if (
+    req.method === "GET" &&
+    (req.url === "/" || req.url === "/health")
+  ) {
+    res.writeHead(200, {
+      "Content-Type": "text/plain; charset=utf-8"
+    });
+
+    return res.end("Sir AI is running");
+  }
+
+  res.writeHead(404, {
+    "Content-Type": "text/plain; charset=utf-8"
+  });
+
+  res.end("Not Found");
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Sir AI web server is listening on port ${PORT}`);
+});
