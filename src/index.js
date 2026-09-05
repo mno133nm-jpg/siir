@@ -1325,7 +1325,7 @@ bot.catch((err) => {
 // Railway Web Server
 // =====================
 
-const PORT = process.env.PORT || 8080;
+const WEB_PORT = process.env.PORT || 8080;
 
 const server = http.createServer((req, res) => {
 
@@ -1372,8 +1372,8 @@ const server = http.createServer((req, res) => {
   res.end("Not Found");
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🌐 Sir AI web server is listening on port ${PORT}`);
+server.listen(WEB_PORT, "0.0.0.0", () => {
+    console.log(`🌐 Sir AI web server is listening on port ${PORT}`);
 });
 
 // =====================
