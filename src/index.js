@@ -1334,17 +1334,19 @@ const server = http.createServer((req, res) => {
     req.method === "GET" &&
     req.url === "/.well-known/apple-developer-merchantid-domain-association"
   ) {
-    const filePath =
-      "./.well-known/apple-developer-merchantid-domain-association";
+const filePath = new URL(
+  "../.well-known/apple-developer-merchantid-domain-association",
+  import.meta.url
+);
 
-    if (!fs.existsSync(filePath)) {
-      res.writeHead(404, {
-        "Content-Type": "text/plain; charset=utf-8"
-      });
-      return res.end("Apple Pay verification file not found");
-    }
+if (!fs.existsSync(filePath)) {
+  res.writeHead(404, {
+    "Content-Type": "text/plain; charset=utf-8"
+  });
+  return res.end("Apple Pay verification file not found");
+}
 
-    const file = fs.readFileSync(filePath);
+const file = fs.readFileSync(filePath);
 
     res.writeHead(200, {
       "Content-Type": "text/plain"
