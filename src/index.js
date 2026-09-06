@@ -23,6 +23,10 @@ import { Resend } from "resend";
 import { searchJobs } from "./job-search.js";
 import http from "http";
 
+import {
+  registerMoyasarPayment,
+  handleMoyasarRequest
+} from "./services/moyasarPayment.js";
 
 
 // =====================
@@ -34,6 +38,8 @@ const sessions = new Map();
 
 registerCompanyEmails(bot, sessions);
 registerCV(bot, sessions);
+registerMoyasarPayment(bot);
+
 
 // =====================
 // OpenAI
@@ -1327,9 +1333,20 @@ bot.catch((err) => {
 
 const WEB_PORT = process.env.PORT || 8080;
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
+
   console.log("HTTP REQUEST:", req.method, req.url);
-  
+
+  const handled =
+    await handleMoyasarRequest(
+      req,
+      res,
+      bot
+    );
+
+  if (handled) {
+    return;
+  }
 
   // Apple Pay domain verification
   if (
