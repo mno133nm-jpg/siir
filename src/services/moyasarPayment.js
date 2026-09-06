@@ -263,49 +263,7 @@ Moyasar.init({
 
   return false;
 }
-import crypto from "crypto";
 
-const PUBLIC_URL =
-  process.env.PUBLIC_URL ||
-  "https://siir-production-6845.up.railway.app";
-
-const PUBLISHABLE_KEY =
-  process.env.MOYASAR_PUBLISHABLE_KEY;
-
-const SECRET_KEY =
-  process.env.MOYASAR_SECRET_KEY;
-
-const PAYMENT_AMOUNT =
-  Number(process.env.PAYMENT_AMOUNT_HALALAS || 20000);
-
-
-// ===============================
-// إنشاء رابط دفع
-// ===============================
-
-export function createPaymentLink(userId) {
-
-  const token =
-    crypto.randomBytes(24).toString("hex");
-
-  const data = db();
-
-  if (!data.pendingPayments) {
-    data.pendingPayments = {};
-  }
-
-  data.pendingPayments[token] = {
-    userId: String(userId),
-    amount: PAYMENT_AMOUNT,
-    currency: "SAR",
-    status: "pending",
-    createdAt: new Date().toISOString()
-  };
-
-  save(data);
-
-  return `${PUBLIC_URL}/pay?token=${token}`;
-}
 
 
 // ===============================
