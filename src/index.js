@@ -1335,18 +1335,17 @@ const WEB_PORT = process.env.PORT || 8080;
 
 const server = http.createServer(async (req, res) => {
 
-  console.log("HTTP REQUEST:", req.method, req.url);
+const handled = await handleMoyasarRequest(
+  req,
+  res,
+  bot
+);
 
-  const handled =
-    await handleMoyasarRequest(
-      req,
-      res,
-      bot
-    );
+if (handled) {
+  return;
+}
 
-  if (handled) {
-    return;
-  }
+console.log("HTTP REQUEST:", req.method, req.url);
 
   // Apple Pay domain verification
   if (
