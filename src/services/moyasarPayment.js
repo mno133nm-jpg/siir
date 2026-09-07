@@ -501,6 +501,234 @@ ${expiry.toLocaleDateString("ar-SA")}
     );
   }
 
+  // ===============================
+  // Moyasar Webhook
+  // ===============================
 
+  if (
+    req.method === "POST" &&
+    url.pathname === "/webhooks/moyasar"
+  ) {
+    try {
+      let body = "";
+
+      for await (const chunk of req) {
+        body += chunk;
+      }
+
+      const payload = JSON.parse(body);
+
+      const webhookSecret =
+        process.env.MOYASAR_WEBHOOK_SECRET;
+
+      if (
+        !webhookSecret ||
+        payload.secret_token !== webhookSecret
+      ) {
+        res.writeHead(401, {
+          "Content-Type":
+            "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            error: "Unauthorized"
+          })
+        );
+      }
+
+      if (payload.type !== "payment_paid") {
+        res.writeHead(200, {
+          "Content-Type":
+            "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            received: true
+          })
+        );
+      }
+
+      const payment = payload.data;
+
+      if (!payment?.id) {
+        res.writeHead(400, {
+          "Content-Type":
+            "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            error: "Payment data missing"
+          })
+        );
+      }
+
+      // التحقق من الدفع مباشرة من Moyasar
+      const verifiedPayment =
+        await verifyPayment(payment.id);
+
+      if (
+        verifiedPayment.status !== "paid" ||
+        verifiedPayment.amount !== PAYMENT_AMOUNT ||
+        verifiedPayment.currency !== "SAR"
+      ) {
+        res.writeHead(400, {
+          "Content-Type":
+            "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            error: "Payment verification failed"
+          })
+        );
+      }
+
+      const data = db();
+
+      let token = null;
+
+      // البحث عن رابط الدفع المرتبط بالعملية
+      for (const paymentToken in
+        data.pendingPayments || {}) {
+
+        const pending =
+          data.pendingPayments[paymentToken];
+
+        if (
+          pending.paymentId === payment.id
+        ) {
+          token = paymentToken;
+          break;
+        }
+      }
+
+      // محاولة البحث من metadata
+      if (
+        !token &&
+        payment.metadata?.payment_token
+      ) {
+        token =
+          payment.metadata.payment_token;
+      }
+
+      if (!token) {
+        console.error(
+          "Moyasar webhook: payment token not found",
+          payment.id
+        );
+
+        res.writeHead(200, {
+          "Content-Type":
+            "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            received: true
+          })
+        );
+      }
+
+      const pending =
+        data.pendingPayments?.[token];
+
+      if (!pending) {
+        res.writeHead(200, {
+          "Content-Type":
+            "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            received: true
+          })
+        );
+      }
+
+      // منع التفعيل مرتين
+      if (pending.status === "paid") {
+        res.writeHead(200, {
+          "Content-Type":
+            "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            received: true,
+            already_processed: true
+          })
+        );
+      }
+
+      const expiry =
+        activateSubscription(
+          pending.userId,
+          payment.id
+        );
+
+      const updatedData = db();
+
+      updatedData.pendingPayments[token] = {
+        ...updatedData.pendingPayments[token],
+        status: "paid",
+        paymentId: payment.id,
+        paidAt: new Date().toISOString()
+      };
+
+      save(updatedData);
+
+      try {
+        await bot.telegram.sendMessage(
+          pending.userId,
+          `🎉 تم تفعيل اشتراكك بنجاح!
+
+💰 المبلغ: 9 ريال
+⏳ الاشتراك: شهر واحد
+📅 ينتهي في:
+${expiry.toLocaleDateString("ar-SA")}
+
+استمتع بخدمات Sir AI 🤖`
+        );
+      } catch (telegramError) {
+        console.error(
+          "Telegram notification failed:",
+          telegramError.message
+        );
+      }
+
+      res.writeHead(200, {
+        "Content-Type":
+          "application/json"
+      });
+
+      return res.end(
+        JSON.stringify({
+          received: true,
+          activated: true
+        })
+      );
+
+    } catch (error) {
+      console.error(
+        "Moyasar webhook error:",
+        error
+      );
+
+      res.writeHead(500, {
+        "Content-Type":
+          "application/json"
+      });
+
+      return res.end(
+        JSON.stringify({
+          error: "Webhook processing failed"
+        })
+      );
+    }
+  }
+  
   return false;
 }
