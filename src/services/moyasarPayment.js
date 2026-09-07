@@ -10,7 +10,7 @@ const PUBLISHABLE_KEY =
   console.log("MOYASAR KEY CHECK:", {
   exists: Boolean(PUBLISHABLE_KEY),
 prefix: String(PUBLISHABLE_KEY || "").slice(0, 8),
-  length: PUBLISHABLE_KEY.length
+length: String(PUBLISHABLE_KEY || "").length
 });
 
 const SECRET_KEY =
