@@ -17,7 +17,7 @@ const SECRET_KEY =
   process.env.MOYASAR_SECRET_KEY;
 
 const PAYMENT_AMOUNT =
-  Number(process.env.PAYMENT_AMOUNT_HALALAS || 20000);
+  Number(process.env.PAYMENT_AMOUNT_HALALAS || 900);
 
 
 // ===============================
