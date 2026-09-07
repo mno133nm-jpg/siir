@@ -7,6 +7,11 @@ const PUBLIC_URL =
 
 const PUBLISHABLE_KEY =
   process.env.MOYASAR_PUBLISHABLE_KEY;
+  console.log("MOYASAR KEY CHECK:", {
+  exists: Boolean(PUBLISHABLE_KEY),
+  prefix: PUBLISHABLE_KEY.slice(0, 8),
+  length: PUBLISHABLE_KEY.length
+});
 
 const SECRET_KEY =
   process.env.MOYASAR_SECRET_KEY;
