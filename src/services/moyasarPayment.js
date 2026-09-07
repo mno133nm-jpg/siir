@@ -284,20 +284,13 @@ Moyasar.init({
   callback_url:
     '${PUBLIC_URL}/payment/callback?token=${token}',
 
-methods: [
-  'creditcard'
-],
+methods: ['creditcard', 'applepay'],
+apple_pay: {
+  country: 'SA',
+  label: 'Sir AI',
+  validate_merchant_url: 'https://api.moyasar.com/v1/applepay/initiate',
+},
 
-  apple_pay: {
-
-    country: 'SA',
-
-    label: 'Sir AI',
-
-    validate_merchant_url:
-      'https://api.moyasar.com/v1/applepay/initiate'
-
-  },
 
   metadata: {
 
