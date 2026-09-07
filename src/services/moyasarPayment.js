@@ -64,7 +64,7 @@ export function registerMoyasarPayment(bot) {
           inline_keyboard: [
             [
               {
-                text: " الدفع عبر Apple Pay",
+text: " الدفع عبر Apple Pay",
                 url: link
               }
             ]
@@ -279,9 +279,9 @@ Moyasar.init({
   callback_url:
     '${PUBLIC_URL}/payment/callback?token=${token}',
 
-  methods: [
-    'applepay'
-  ],
+methods: [
+  'creditcard'
+],
 
   apple_pay: {
 
@@ -729,6 +729,6 @@ ${expiry.toLocaleDateString("ar-SA")}
       );
     }
   }
-  
+
   return false;
 }
