@@ -709,12 +709,124 @@ export async function handlePaylinkRequest(
   // ===============================
   // Webhook
   // ===============================
+  // ===============================
+  // Webhook
+  // ===============================
   if (
     req.method === "POST" &&
-    url.pathname ===
-      "/webhooks/paylink"
+    url.pathname === "/webhooks/paylink"
   ) {
     try {
+      let body = "";
+
+      for await (const chunk of req) {
+        body += chunk;
+      }
+
+      const payload = JSON.parse(body);
+
+      console.log("Paylink Webhook:", payload);
+
+      const orderNumber =
+        payload.merchantOrderNumber;
+
+      const transactionNo =
+        payload.transactionNo;
+
+      const status =
+        String(
+          payload.orderStatus || ""
+        ).toUpperCase();
+
+      // Paylink test / unknown webhook
+      // يجب إرجاع 200 دائمًا لتأكيد الاستلام
+      if (!orderNumber || !transactionNo) {
+        res.writeHead(200, {
+          "Content-Type": "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            received: true
+          })
+        );
+      }
+
+      const data = db();
+
+      const pending =
+        data.pendingPayments?.[orderNumber];
+
+      // إذا كانت العملية غير موجودة عندنا،
+      // نؤكد استلام Webhook فقط ولا نفعّل اشتراك.
+      if (!pending) {
+        console.log(
+          "Paylink Webhook: unknown order",
+          orderNumber
+        );
+
+        res.writeHead(200, {
+          "Content-Type": "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            received: true,
+            processed: false
+          })
+        );
+      }
+
+      // لا نعالج إلا العملية المدفوعة
+      if (status !== "PAID") {
+        res.writeHead(200, {
+          "Content-Type": "application/json"
+        });
+
+        return res.end(
+          JSON.stringify({
+            received: true,
+            status
+          })
+        );
+      }
+
+      await processSuccessfulPayment({
+        orderNumber,
+        transactionNo,
+        bot
+      });
+
+      res.writeHead(200, {
+        "Content-Type": "application/json"
+      });
+
+      return res.end(
+        JSON.stringify({
+          received: true,
+          activated: true
+        })
+      );
+
+    } catch (error) {
+      console.error(
+        "Paylink webhook error:",
+        error
+      );
+
+      // مهم: Paylink يتوقع 200 لتأكيد استلام Webhook
+      res.writeHead(200, {
+        "Content-Type": "application/json"
+      });
+
+      return res.end(
+        JSON.stringify({
+          received: true
+        })
+      );
+    }
+  }
+      try {
       let body = "";
 
       for await (
