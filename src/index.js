@@ -24,9 +24,9 @@ import { searchJobs } from "./job-search.js";
 import http from "http";
 
 import {
-  registerMoyasarPayment,
-  handleMoyasarRequest
-} from "./services/moyasarPayment.js";
+  registerPaylinkPayment,
+  handlePaylinkRequest
+} from "./services/paylinkPayment.js";
 
 
 // =====================
@@ -38,7 +38,7 @@ const sessions = new Map();
 
 registerCompanyEmails(bot, sessions);
 registerCV(bot, sessions);
-registerMoyasarPayment(bot);
+registerPaylinkPayment(bot);
 
 
 // =====================
@@ -1335,7 +1335,7 @@ const WEB_PORT = process.env.PORT || 8080;
 
 const server = http.createServer(async (req, res) => {
 
-const handled = await handleMoyasarRequest(
+const handled = await handlePaylinkRequest(
   req,
   res,
   bot
