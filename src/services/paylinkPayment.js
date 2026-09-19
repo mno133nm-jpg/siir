@@ -824,8 +824,9 @@ export async function handlePaylinkRequest(
           received: true
         })
       );
-    }
-  }
     
+  }
+  }
+
   return false;
 }
