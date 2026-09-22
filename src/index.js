@@ -24,9 +24,9 @@ import { searchJobs } from "./job-search.js";
 import http from "http";
 
 import {
-  registerPaylinkPayment,
-  handlePaylinkRequest
-} from "./services/paylinkPayment.js";
+  registerNalpayPayment,
+  handleNalpayRequest
+} from "./services/nalpayPayment.js";
 
 
 // =====================
@@ -38,8 +38,7 @@ const sessions = new Map();
 
 registerCompanyEmails(bot, sessions);
 registerCV(bot, sessions);
-registerPaylinkPayment(bot);
-
+registerNalpayPayment(bot);
 
 // =====================
 // OpenAI
@@ -1335,7 +1334,7 @@ const WEB_PORT = process.env.PORT || 8080;
 
 const server = http.createServer(async (req, res) => {
 
-const handled = await handlePaylinkRequest(
+const handled = await handleNalpayRequest(
   req,
   res,
   bot
