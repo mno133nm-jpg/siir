@@ -896,6 +896,20 @@ bot.on("successful_payment", async (ctx) => {
 });
 
 
+bot.action("email_access_code", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const session =
+    sessions.get(ctx.from.id) || {};
+
+  session.step = "waiting_email_access_code";
+
+  sessions.set(ctx.from.id, session);
+
+  return ctx.reply(
+    "🎟️ أرسل كود الدخول:"
+  );
+});
 
 bot.action("company_emails", async (ctx) => {
   await ctx.answerCbQuery();
