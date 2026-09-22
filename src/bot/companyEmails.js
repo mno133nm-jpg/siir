@@ -808,19 +808,32 @@ bot.action("email_sub_60", async (ctx) => {
   });
 });
 
-bot.action("email_access_code", async (ctx) => {
+bot.action("recent_emails", async (ctx) => {
   await ctx.answerCbQuery();
 
-  const session =
-    sessions.get(ctx.from.id) || {};
+  const results = getRecentCompanies();
 
-  session.step = "waiting_email_access_code";
+  if (!results.length) {
+    return ctx.reply(
+      "📭 لا توجد إيميلات حديثة حاليًا."
+    );
+  }
 
-  sessions.set(ctx.from.id, session);
+  const latestDate = results[0].addedDate;
 
-  return ctx.reply(
-    "🎟️ أرسل كود الدخول:"
+  const latestResults = results.filter(
+    (company) => company.addedDate === latestDate
   );
+
+  sessions.set(ctx.from.id, {
+    step: "emails_search_results",
+    emailSearchResults: latestResults,
+    emailSearchOffset: 0,
+    emailSearchQuery:
+      `الإيميلات المضافة بتاريخ ${latestDate}`
+  });
+
+  return sendEmailSearchPage(ctx, sessions);
 });
 
 bot.on("successful_payment", async (ctx) => {
@@ -891,12 +904,12 @@ bot.action("company_emails", async (ctx) => {
     return ctx.reply(
       `🔐 اختر طريقة الدخول إلى إيميلات الشركات:
 
-💳 اشتراك سير AI — 9 ريال / شهر
+💳 اشتراك سير AI — 10 ريال / شهر
 🎟️ أو استخدم كود دخول إذا كان لديك كود`,
       Markup.inlineKeyboard([
         [
           Markup.button.callback(
-            "💳 الاشتراك — 9 ريال",
+            "💳 الاشتراك — 10 ريال",
             "subscribe"
           )
         ],
