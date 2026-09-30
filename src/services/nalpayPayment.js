@@ -153,11 +153,12 @@ function activateSubscription(
 
   let startDate = now;
 
-  if (
-    user.subscriptionActive &&
-    user.subscriptionExpiresAt
-  ) {
-    const oldExpiry =
+if (
+  user.subscriptionActive &&
+  user.subscriptionExpiresAt &&
+  userId !== "1310982886"
+) {
+      const oldExpiry =
       new Date(
         user.subscriptionExpiresAt
       );
