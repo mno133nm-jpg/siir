@@ -593,11 +593,14 @@ ${expiry.toLocaleDateString("ar-SA")}
         user.subscriptionActive &&
         user.subscriptionExpiresAt
       ) {
-        const expiry =
-          new Date(
-            user.subscriptionExpiresAt
-          );
+ensureUser(userId);
 
+const expiry =
+  activateSubscription(
+    userId,
+    payment.id
+  );
+  
         if (
           expiry > new Date()
         ) {
