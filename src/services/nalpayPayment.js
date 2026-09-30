@@ -397,51 +397,65 @@ async function createCustomer(
   );
 }
 
-async function handlePaidPayment(
-  payment,
-  bot
-) {
+async function handlePaidPayment(payment, bot) {
   if (!payment) {
     return;
   }
 
-  if (
-    payment.status !== "paid"
-  ) {
+  if (payment.status !== "paid") {
     return;
   }
 
-  if (
-    Number(payment.amount) !==
-    PAYMENT_AMOUNT
-  ) {
+  if (Number(payment.amount) !== PAYMENT_AMOUNT) {
     console.log(
       "Nal Pay payment amount mismatch:",
       payment.id
     );
-
     return;
   }
 
   if (
-    String(
-      payment.currency
-    ).toUpperCase() !==
-    "SAR"
+    String(payment.currency).toUpperCase() !== "SAR"
   ) {
+    console.log(
+      "Nal Pay payment currency mismatch:",
+      payment.id
+    );
     return;
   }
 
-  const userId =
-    payment.metadata
-      ?.telegramUserId;
+  // أولاً نحاول أخذ Telegram ID من بيانات الدفع
+  let userId =
+    payment.metadata?.telegramUserId;
+
+  // إذا لم يوجد، نسترجعه من Payment Link
+  if (!userId && payment.payment_link) {
+    try {
+      const paymentLink =
+        await nalpayRequest(
+          `/v1/payment_links/${payment.payment_link}`
+        );
+
+      userId =
+        paymentLink?.metadata?.telegramUserId;
+
+      console.log(
+        "🔎 Telegram user recovered from payment link:",
+        userId || "not found"
+      );
+    } catch (error) {
+      console.error(
+        "❌ Failed to retrieve Nal Pay payment link:",
+        error.message
+      );
+    }
+  }
 
   if (!userId) {
     console.log(
       "Nal Pay payment has no Telegram user:",
       payment.id
     );
-
     return;
   }
 
@@ -456,7 +470,6 @@ async function handlePaidPayment(
       "Sir AI user not found:",
       userId
     );
-
     return;
   }
 
@@ -469,9 +482,7 @@ async function handlePaidPayment(
 💰 المبلغ: 10 ريال
 ⏳ المدة: شهر واحد
 📅 تاريخ الانتهاء:
-${expiry.toLocaleDateString(
-  "ar-SA"
-)}
+${expiry.toLocaleDateString("ar-SA")}
 
 🤖 استمتع بخدمات Sir AI`
     );
