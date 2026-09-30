@@ -501,6 +501,76 @@ ${expiry.toLocaleDateString("ar-SA")}
 export function registerNalpayPayment(
   bot
 ) {
+    // Temporary recovery for the previous successful payment
+  if (
+    process.env.NALPAY_RECOVERY_PAYMENT_ID &&
+    process.env.NALPAY_RECOVERY_USER_ID
+  ) {
+    setTimeout(async () => {
+      try {
+        const paymentId =
+          process.env.NALPAY_RECOVERY_PAYMENT_ID;
+
+        const userId =
+          process.env.NALPAY_RECOVERY_USER_ID;
+
+        const payment =
+          await nalpayRequest(
+            `/v1/payments/${paymentId}`
+          );
+
+        console.log(
+          "🔄 Nal Pay recovery payment:",
+          payment.id,
+          payment.status,
+          payment.amount,
+          payment.currency
+        );
+
+        if (payment.status !== "paid") {
+          console.log(
+            "❌ Recovery payment is not paid"
+          );
+          return;
+        }
+
+        const expiry =
+          activateSubscription(
+            userId,
+            payment.id
+          );
+
+        if (!expiry) {
+          console.log(
+            "❌ Recovery user not found:",
+            userId
+          );
+          return;
+        }
+
+        await bot.telegram.sendMessage(
+          String(userId),
+          `🎉 تم تفعيل اشتراكك بنجاح!
+
+💰 المبلغ: 10 ريال
+⏳ المدة: شهر واحد
+📅 تاريخ الانتهاء:
+${expiry.toLocaleDateString("ar-SA")}
+
+🤖 استمتع بخدمات Sir AI`
+        );
+
+        console.log(
+          `✅ Recovery subscription activated for ${userId}`
+        );
+      } catch (error) {
+        console.error(
+          "❌ Nal Pay recovery error:",
+          error.message
+        );
+      }
+    }, 5000);
+  }
   bot.nalpaySessions =
     bot.nalpaySessions ||
     {};
