@@ -115,23 +115,22 @@ function ensureUser(userId, name = "") {
   const data = db();
   const id = String(userId);
 
-  if (!data.users[id]) {
-    data.users[id] = {
-      id,
-      name,
-      email: "",
-      cvText: "",
-      profile: null,
+if (!data.users[id]) {
+  data.users[id] = {
+    id,
+    name: "",
+    email: "",
+    cvText: "",
+    profile: null,
+    subscriptionActive: false,
+    subscriptionType: null,
+    subscriptionStartedAt: null,
+    subscriptionExpiresAt: null,
+    paymentId: null
+  };
 
-      subscriptionActive: false,
-      subscriptionType: null,
-      subscriptionStartedAt: null,
-      subscriptionExpiresAt: null,
-      paymentId: null
-    };
-
-    save(data);
-  }
+  save(data);
+}
 
   return data.users[id];
 }
@@ -600,7 +599,7 @@ const expiry =
     userId,
     payment.id
   );
-  
+
         if (
           expiry > new Date()
         ) {
