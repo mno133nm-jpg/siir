@@ -27,7 +27,7 @@ export function menu() {
     )],
 
     [Markup.button.callback(
-      "💳 الاشتراك — 9 ريال",
+"💳 الاشتراك — 10 ريال",
       "subscribe"
     )],
 
