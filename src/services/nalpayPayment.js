@@ -154,10 +154,9 @@ function activateSubscription(
 
 if (
   user.subscriptionActive &&
-  user.subscriptionExpiresAt &&
-  userId !== "1310982886"
+  user.subscriptionExpiresAt
 ) {
-      const oldExpiry =
+        const oldExpiry =
       new Date(
         user.subscriptionExpiresAt
       );
@@ -502,148 +501,7 @@ ${expiry.toLocaleDateString("ar-SA")}
 export function registerNalpayPayment(
   bot
 ) {
-// Temporary recovery for the previous successful payment
-if (process.env.NALPAY_RECOVERY_PAYMENT_ID) {
-  setTimeout(async () => {
-    try {
-      const paymentId =
-        process.env.NALPAY_RECOVERY_PAYMENT_ID;
 
-      const payment =
-        await nalpayRequest(
-          `/v1/payments/${paymentId}`
-        );
-
-      console.log(
-        "🔄 Nal Pay recovery payment:",
-        payment.id,
-        payment.status,
-        payment.amount,
-        payment.currency
-      );
-
-      if (payment.status !== "paid") {
-        console.log(
-          "❌ Recovery payment is not paid"
-        );
-        return;
-      }
-
-      // الحصول على Telegram ID من الدفع
-      let userId =
-        payment.metadata?.telegramUserId;
-
-      // إذا لم يوجد، نقرأه من Payment Link
-      if (!userId && payment.payment_link) {
-        const paymentLink =
-          await nalpayRequest(
-            `/v1/payment_links/${payment.payment_link}`
-          );
-
-        userId =
-          paymentLink?.metadata?.telegramUserId;
-
-        console.log(
-          "🔎 Telegram ID from payment link:",
-          userId || "not found"
-        );
-      }
-
-      if (!userId) {
-        console.log(
-          "❌ Could not find Telegram user in payment metadata"
-        );
-        return;
-      }
-
-      console.log(
-        "👤 Recovery Telegram user:",
-        userId
-      );
-
-      const data = db();
-      const id = String(userId);
-
-      if (!data.users[id]) {
-        data.users[id] = {
-          id,
-          name: "",
-          email: "",
-          cvText: "",
-          profile: null,
-          subscriptionActive: false,
-          subscriptionType: null,
-          subscriptionStartedAt: null,
-          subscriptionExpiresAt: null,
-          paymentId: null
-        };
-      }
-
-      const user = data.users[id];
-      const now = new Date();
-
-      let startDate = now;
-
-      if (
-        user.subscriptionActive &&
-        user.subscriptionExpiresAt
-      ) {
-        const oldExpiry =
-          new Date(
-            user.subscriptionExpiresAt
-          );
-
-        if (oldExpiry > now) {
-          startDate = oldExpiry;
-        }
-      }
-
-      const expiry =
-        new Date(startDate);
-
-      expiry.setDate(
-        expiry.getDate() + 30
-      );
-
-      user.subscriptionActive = true;
-      user.subscriptionType = "monthly";
-      user.subscriptionStartedAt =
-        user.subscriptionStartedAt ||
-        now.toISOString();
-      user.subscriptionExpiresAt =
-        expiry.toISOString();
-      user.paymentId = payment.id;
-
-      save(data);
-
-      console.log(
-        `✅ Recovery subscription activated for ${userId}`
-      );
-
-      await bot.telegram.sendMessage(
-        String(userId),
-        `🎉 تم تفعيل اشتراكك بنجاح!
-
-💰 المبلغ: 10 ريال
-⏳ المدة: شهر واحد
-📅 تاريخ الانتهاء:
-${expiry.toLocaleDateString("ar-SA")}
-
-🤖 استمتع بخدمات Sir AI`
-      );
-
-      console.log(
-        `📩 Recovery activation message sent to ${userId}`
-      );
-
-    } catch (error) {
-      console.error(
-        "❌ Nal Pay recovery error:",
-        error.message
-      );
-    }
-  }, 5000);
-}
   bot.nalpaySessions =
     bot.nalpaySessions ||
     {};
@@ -662,15 +520,18 @@ ${expiry.toLocaleDateString("ar-SA")}
           ctx.from.first_name
         );
 
-      if (
-        user.subscriptionActive &&
-        user.subscriptionExpiresAt
-      ) {
+if (
+  user.subscriptionActive &&
+  user.subscriptionExpiresAt
+) {
+  const expiry = new Date(
+    user.subscriptionExpiresAt
+  );
 
-        if (
-          expiry > new Date()
-        ) {
-          return ctx.reply(
+  if (
+    expiry > new Date()
+  ) {
+              return ctx.reply(
             `✅ اشتراكك فعال بالفعل.
 
 📅 ينتهي في:
