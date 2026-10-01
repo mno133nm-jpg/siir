@@ -535,19 +535,63 @@ export function registerNalpayPayment(
           return;
         }
 
-        const expiry =
-          activateSubscription(
-            userId,
-            payment.id
-          );
+const data = db();
+const id = String(userId);
 
-        if (!expiry) {
-          console.log(
-            "❌ Recovery user not found:",
-            userId
-          );
-          return;
-        }
+if (!data.users[id]) {
+  data.users[id] = {
+    id,
+    name: "",
+    email: "",
+    cvText: "",
+    profile: null,
+    subscriptionActive: false,
+    subscriptionType: null,
+    subscriptionStartedAt: null,
+    subscriptionExpiresAt: null,
+    paymentId: null
+  };
+}
+
+const user = data.users[id];
+
+const now = new Date();
+
+let startDate = now;
+
+if (
+  user.subscriptionActive &&
+  user.subscriptionExpiresAt
+) {
+  const oldExpiry =
+    new Date(user.subscriptionExpiresAt);
+
+  if (oldExpiry > now) {
+    startDate = oldExpiry;
+  }
+}
+
+const expiry =
+  new Date(startDate);
+
+expiry.setDate(
+  expiry.getDate() + 30
+);
+
+user.subscriptionActive = true;
+user.subscriptionType = "monthly";
+user.subscriptionStartedAt =
+  user.subscriptionStartedAt ||
+  now.toISOString();
+user.subscriptionExpiresAt =
+  expiry.toISOString();
+user.paymentId = payment.id;
+
+save(data);
+
+console.log(
+  `✅ Recovery subscription activated for ${userId}`
+);
 
         await bot.telegram.sendMessage(
           String(userId),
