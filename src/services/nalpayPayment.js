@@ -458,11 +458,13 @@ async function handlePaidPayment(payment, bot) {
     return;
   }
 
-  const expiry =
-    activateSubscription(
-      userId,
-      payment.id
-    );
+ensureUser(userId);
+
+const expiry =
+  activateSubscription(
+    userId,
+    payment.id
+  );
 
   if (!expiry) {
     console.log(
@@ -592,13 +594,6 @@ ${expiry.toLocaleDateString("ar-SA")}
         user.subscriptionActive &&
         user.subscriptionExpiresAt
       ) {
-ensureUser(userId);
-
-const expiry =
-  activateSubscription(
-    userId,
-    payment.id
-  );
 
         if (
           expiry > new Date()
